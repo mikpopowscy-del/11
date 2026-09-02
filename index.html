@@ -236,7 +236,7 @@
     box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
   }
 
-  /* WIZUALNA TALIA 3D */
+  /* TALIA 3D */
   .deck-visual-box {
     display: flex;
     align-items: center;
@@ -256,13 +256,46 @@
     flex-shrink: 0;
   }
 
-  /* LISTA GRACZY */
+  /* WYBÓR PARTII MECZU PRZEZ HOSTA */
+  .match-rounds-selector {
+    background: var(--bg-inner);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rounds-btn-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .round-btn-pill {
+    padding: 8px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-weight: bold;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-align: center;
+  }
+  .round-btn-pill.selected {
+    background: var(--accent);
+    color: #000;
+    border-color: #fff;
+    font-weight: 900;
+  }
+
+  /* LISTA GRACZY I PUNKTACJA */
   .players-scroll { display: flex; flex-direction: column; gap: 8px; }
   .player-slot {
     background: var(--bg-inner);
     border-radius: 10px;
     padding: 10px;
-    border-left: 5px solid var(--border);
+    border-left: 6px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -305,9 +338,32 @@
     align-items: center;
     gap: 6px;
   }
-  .score-pill { background: #0284c7; color: #fff; font-size: 0.8rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
-  .penalty-pill { background: #dc2626; color: #fff; font-size: 0.75rem; font-weight: 800; padding: 4px 6px; border-radius: 6px; }
-  .badge-last-card { background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+  .score-pill {
+    background: #0284c7;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 900;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .penalty-pill {
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 900;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #f87171;
+  }
+  .badge-last-card {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
 
   /* ANIMACJA KARTY */
   .flying-card {
@@ -362,7 +418,7 @@
 <body>
 
 <div class="game-wrapper">
-  <!-- GÓRNY PASEK TURY ZE WSKAŹNIKIEM KTO JEDZIE -->
+  <!-- GÓRNY PASEK TURY -->
   <div class="top-bar-container">
     <div class="turn-banner other-turn" id="global-turn-banner">
       <div id="turn-text">OCZEKIWANIE NA START</div>
@@ -378,12 +434,12 @@
     <div class="panel">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Stół (11 &rarr; 1 oraz 11 &rarr; 20)</span>
-        <span style="font-size:0.8rem; font-weight:bold; color:var(--yellow);" id="match-round-indicator">Runda 1 z 3</span>
+        <span style="font-size:0.85rem; font-weight:900; color:var(--yellow); background:rgba(245,158,11,0.15); padding:4px 8px; border-radius:6px; border:1px solid var(--yellow);" id="match-round-indicator">MECZ: Partia 1 z 3</span>
       </div>
       
       <div id="board-lanes" style="display:flex; flex-direction:column; gap:8px;"></div>
 
-      <!-- Twoja Ręka z przełącznikiem sortowania -->
+      <!-- Twoja Ręka -->
       <div style="margin-top:6px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <div>
@@ -404,9 +460,9 @@
       </div>
     </div>
 
-    <!-- PRAWY PANEL: WIZUALNA TALIA, LOBBY, GRACZE & PUNKTY -->
+    <!-- PRAWY PANEL: WIZUALNA TALIA, WYBÓR PARTII, GRACZE & PUNKTY -->
     <div class="panel">
-      <!-- Stos kart zakrytych 3D -->
+      <!-- Stos kart 3D -->
       <div class="deck-visual-box">
         <div class="deck-3d-stack" id="deck-3d-visual"></div>
         <div>
@@ -415,32 +471,16 @@
         </div>
       </div>
 
-      <!-- Konfiguracja Partii i Hosta -->
-      <div class="host-config-box" id="host-config-box">
-        <div style="font-size:0.8rem; font-weight:bold; color:var(--yellow);">⚙️ Ustawienia Meczu</div>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
-          <span>Liczba partii w meczu:</span>
-          <select id="match-rounds-select" onchange="changeMatchRounds(this.value)" style="background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); padding:4px 8px; border-radius:6px;">
-            <option value="1">1 partia (Szybka gra)</option>
-            <option value="3" selected>3 partie</option>
-            <option value="5">5 partii</option>
-          </select>
+      <!-- WYBÓR LICZBY PARTII PRZEZ HOSTA -->
+      <div class="match-rounds-selector" id="host-match-rounds-box">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.85rem; font-weight:900; color:var(--accent);">🎯 Długość meczu (wybiera Host):</span>
+          <span style="font-size:0.75rem; color:var(--text-muted);" id="current-rules-pill">Mecz do 3 partii</span>
         </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
-          <span>Czas na ruch:</span>
-          <select id="time-limit-select" onchange="changeTimeLimit(this.value)" style="background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); padding:4px 8px; border-radius:6px;">
-            <option value="0">Bez limitu</option>
-            <option value="15">15 sekund</option>
-            <option value="30" selected>30 sekund</option>
-            <option value="45">45 sekund</option>
-            <option value="60">60 sekund</option>
-          </select>
-        </div>
-
-        <div style="display:flex; gap:6px; margin-top:2px;" id="player-count-buttons">
-          <button class="action-btn btn-draw" style="padding:6px 10px; font-size:0.75rem; flex:1;" onclick="addPlayerPrompt()">+ Dodaj Gracza (Lokalnie)</button>
+        <div class="rounds-btn-group" id="rounds-btn-group">
+          <button class="round-btn-pill" id="btn-round-1" onclick="setMatchRounds(1)">1 Partia</button>
+          <button class="round-btn-pill selected" id="btn-round-3" onclick="setMatchRounds(3)">3 Partie</button>
+          <button class="round-btn-pill" id="btn-round-5" onclick="setMatchRounds(5)">5 Partii</button>
         </div>
       </div>
 
@@ -456,14 +496,21 @@
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="font-size:0.95rem;">Gracze przy stole (<span id="players-total-count">2</span>/6)</h3>
-        <span style="font-size:0.75rem; color:var(--text-muted);">Karty / Karne pkt</span>
+      <!-- PIN & DODAWANIE GRACZY -->
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-inner); padding:8px 12px; border-radius:8px;">
+        <span id="room-pin-display" style="font-size:0.85rem;">🎮 PIN: <strong style="color:var(--yellow);">Lokalnie</strong></span>
+        <button class="action-btn btn-draw" id="btn-add-local-player" style="padding:4px 10px; font-size:0.75rem;" onclick="addPlayerPrompt()">+ Dodaj Gracza</button>
+      </div>
+
+      <!-- LISTA GRACZY I PUNKTÓW -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+        <h3 style="font-size:0.95rem;">Punkty karne w meczu</h3>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Mniej punktów = Lepsza pozycja</span>
       </div>
       <div class="players-scroll" id="players-list"></div>
 
       <div style="display:flex; gap:8px; margin-top:auto;" id="host-controls">
-        <button class="action-btn btn-restart" style="width:100%; padding:12px; font-size:0.85rem;" onclick="startNewGame(true)">🔁 Reset Meczu</button>
+        <button class="action-btn btn-restart" style="width:100%; padding:12px; font-size:0.85rem;" onclick="startNewGame(true)">🔁 Zresetuj cały mecz</button>
       </div>
     </div>
   </div>
@@ -474,13 +521,12 @@
   <div class="rules-box">
     <h2>📖 Zasady gry 11 (Elfer raus!)</h2>
     <ul>
-      <li><strong>Mecz punktowy:</strong> Host ustala liczbę partii (1, 3 lub 5). Wygrywa gracz z <strong>najmniejszą sumą punktów karnych</strong> na koniec meczu!</li>
-      <li><strong>Punkty karne:</strong> Gdy ktoś skończy partię (0 pkt), pozostali gracze sumują wartości kart, które zostały im w ręku.</li>
-      <li><strong>Karta 11:</strong> Otwiera rząd w danym kolorze. Szansa na 11 jest zwiększona dla dynamiki.</li>
-      <li><strong>Rozbudowa rzędów:</strong> Dokładaj numery w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
+      <li><strong>Mecz punktowy:</strong> Host wybiera liczbę partii: 1, 3 lub 5. Wygrywa ten, kto po wszystkich rundach uzbiera <strong>najmniej punktów karnych</strong>!</li>
+      <li><strong>Zliczanie punktów karnych:</strong> Gdy zwycięzca partii wyłoży swoją ostatnią kartę (0 pkt), pozostali gracze sumują liczby ze swoich kart w ręku (np. 15 i 18 = 33 karne punkty).</li>
+      <li><strong>Karta 11:</strong> Otwiera rząd na stole.</li>
+      <li><strong>Rozbudowa rzędów:</strong> Dokładaj karty w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
       <li><strong>Obowiązek ruchu:</strong> Jeśli masz pasującą kartę, musisz wyłożyć minimum jedną.</li>
-      <li><strong>Dobieranie do 3 kart:</strong> Jeśli nie masz ruchu, możesz dobrać <strong>od 1 do maksymalnie 3 kart</strong> z talii. Po każdym dobraniu możesz wyłożyć pasującą kartę lub spasować (nie musisz dobierać od razu trzech!).</li>
-      <li><strong>Pusta talia:</strong> Gdy zabraknie kart w stosie, a gracz nie ma pasującej karty, może od razu spasować.</li>
+      <li><strong>Dobieranie do 3 kart:</strong> Jeśli nie masz ruchu, dobierasz 1 do 3 kart z talii.</li>
     </ul>
     <button class="action-btn btn-draw" style="width:100%;" onclick="closeRulesModal()">Rozumiem</button>
   </div>
@@ -493,11 +539,11 @@
     <div style="font-size: 0.9rem; font-weight: 800; color: var(--yellow); text-transform: uppercase;" id="modal-title-status">Koniec Rundy!</div>
     <div id="winner-name-display" style="font-size: 1.6rem; font-weight: 900; color: var(--text-main); margin: 6px 0;">GRACZ</div>
     
-    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;" id="modal-desc-status">Punkty karne z tej rundy oraz suma meczu:</p>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;" id="modal-desc-status">Punkty karne z tej partii oraz suma meczu:</p>
     
     <table class="summary-table" id="summary-table-body"></table>
 
-    <button class="action-btn btn-restart" style="width: 100%; padding: 13px;" id="btn-next-round-action" onclick="handleNextRoundModalClick()">NASTĘPNA RUNDA</button>
+    <button class="action-btn btn-restart" style="width: 100%; padding: 13px;" id="btn-next-round-action" onclick="handleNextRoundModalClick()">NASTĘPNA PARTIA</button>
   </div>
 </div>
 
@@ -520,9 +566,8 @@ let players = [
 
 let activePlayerIndex = 0;
 let cardsPlayedThisTurn = 0;
-let drawnCardsThisTurn = 0; // Licznik dobierania od 1 do 3 kart
+let drawnCardsThisTurn = 0;
 
-// TRYB SORTOWANIA (colors / values)
 let handSortMode = 'colors';
 
 // STRUKTURA MECZU
@@ -539,7 +584,7 @@ let timerInterval = null;
 const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
 let mqttClient = null;
 let currentRoomTopic = null;
-let isHost = false;
+let isHost = true; // Lokalnie zawsze host
 let myClientId = "p_" + Math.random().toString(36).substring(2, 10);
 let joinInterval = null;
 
@@ -563,9 +608,7 @@ function initFullDeck() {
   for (let c of COLORS) {
     for (let i = 1; i <= 20; i++) {
       deck.push({ color: c, value: i });
-      if (i === 11) {
-        deck.push({ color: c, value: 11 });
-      }
+      if (i === 11) deck.push({ color: c, value: 11 });
     }
   }
   for (let i = deck.length - 1; i > 0; i--) {
@@ -618,12 +661,17 @@ function startNewGame(resetFullMatch = false) {
   render();
 }
 
-function changeMatchRounds(val) {
-  totalMatchRounds = parseInt(val, 10);
-  if (isHost) {
-    broadcastState();
-    render();
-  }
+// WYBÓR RUND PRZEZ HOSTA
+function setMatchRounds(rounds) {
+  if (!isHost) return;
+  totalMatchRounds = rounds;
+  [1, 3, 5].forEach(r => {
+    const btn = document.getElementById(`btn-round-${r}`);
+    if (btn) btn.className = (r === rounds) ? "round-btn-pill selected" : "round-btn-pill";
+  });
+  document.getElementById("current-rules-pill").innerText = `Mecz do ${rounds} ${rounds === 1 ? 'partii' : 'partii'}`;
+  broadcastState();
+  render();
 }
 
 function addPlayerPrompt() {
@@ -665,10 +713,10 @@ function hasAnyPlayableCard(hand) {
 }
 
 function getMyPlayer() {
-  return mqttClient ? (players.find(p => p.id === myClientId) || players[activePlayerIndex]) : players[activePlayerIndex];
+  return (mqttClient && !isHost) ? (players.find(p => p.id === myClientId) || players[activePlayerIndex]) : players[activePlayerIndex];
 }
 
-// ANIMACJA PRZELOTU KARTY
+// ANIMACJA PRZELOTU
 function triggerFlyAnimation(cardElement, targetLaneColor, cardData, callback) {
   const rect = cardElement.getBoundingClientRect();
   const targetLane = document.querySelector(`.color-lane.${targetLaneColor}`);
@@ -742,6 +790,7 @@ function playCard(cardIdx, event) {
 }
 
 function endRound(winnerPlayer) {
+  // Podlicz punkty karne (suma oczek w rękach)
   players.forEach(p => {
     let roundSum = 0;
     p.hand.forEach(c => roundSum += c.value);
@@ -769,14 +818,14 @@ function showRoundSummary(winner) {
   if (isMatchOver) {
     trophy.innerText = "👑";
     titleStatus.innerText = "KONIEC MECZU! ZWYCIĘZCA CAŁEJ GRY:";
-    nameDisplay.innerText = `${sortedPlayers[0].name.toUpperCase()} (${sortedPlayers[0].penaltyPoints} pkt karnych)`;
-    descStatus.innerText = "Mecz dobiegł końca. Ostateczna tabela wyników:";
-    btnNext.innerText = "ZAGRAJ NOWY MECZ";
+    nameDisplay.innerText = `${sortedPlayers[0].name.toUpperCase()} (Tylko ${sortedPlayers[0].penaltyPoints} pkt karnych!)`;
+    descStatus.innerText = "Ostateczna klasyfikacja meczu (im mniej punktów, tym lepiej):";
+    btnNext.innerText = "ROZPOCZNIJ NOWY MECZ";
   } else {
     trophy.innerText = "🏆";
-    titleStatus.innerText = `Koniec Partii ${currentRound} z ${totalMatchRounds}!`;
-    nameDisplay.innerText = `${winner.name.toUpperCase()} (0 pkt karnych)`;
-    descStatus.innerText = "Punkty karne za karty w ręce oraz łączna suma meczu:";
+    titleStatus.innerText = `Partia ${currentRound} z ${totalMatchRounds} zakończona!`;
+    nameDisplay.innerText = `Wygrywa rundę: ${winner.name.toUpperCase()} (0 pkt)`;
+    descStatus.innerText = "Punkty z tej partii doliczone do sumy meczu:";
     btnNext.innerText = `ROZPOCZNIJ PARTIĘ ${currentRound + 1}`;
   }
 
@@ -784,8 +833,8 @@ function showRoundSummary(winner) {
     <tr>
       <th>Miejsce</th>
       <th>Gracz</th>
-      <th>Ta partia</th>
-      <th>Suma punktów</th>
+      <th>Z tej partii</th>
+      <th>Suma punktów karnych</th>
     </tr>
   `;
   sortedPlayers.forEach((p, idx) => {
@@ -794,7 +843,7 @@ function showRoundSummary(winner) {
         <td><strong>#${idx + 1}</strong></td>
         <td>${p.name}</td>
         <td>+${p.lastRoundPenalty}</td>
-        <td><strong>${p.penaltyPoints}</strong></td>
+        <td><strong style="color:var(--red);">${p.penaltyPoints} pkt</strong></td>
       </tr>
     `;
   });
@@ -812,7 +861,6 @@ function handleNextRoundModalClick() {
   }
 }
 
-// DOBIERANIE OD 1 DO 3 KART
 function handleDrawOrPassClick() {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
@@ -833,7 +881,6 @@ function actionDraw() {
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
   
-  // Blokada dobierania jeśli gracz ma ruch na stole i jeszcze nic nie wyłożył (i nie zaczął dobierać)
   if (hasAnyPlayableCard(p.hand) && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) return;
   if (drawnCardsThisTurn >= 3) return;
 
@@ -860,7 +907,6 @@ function actionPass() {
   const currentDeckCount = isOnline ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
   const hasPlayable = hasAnyPlayableCard(p.hand);
 
-  // Pasowanie dozwolone gdy: gracz dołożył kartę, dobrał przynajmniej jedną (1-3), LUB gdy talia jest pusta i brak ruchu
   const canLegallyPass = (cardsPlayedThisTurn > 0) || (drawnCardsThisTurn > 0) || (currentDeckCount === 0 && !hasPlayable);
   if (!canLegallyPass) return;
 
@@ -908,11 +954,6 @@ function updateTimerDisplay() {
   bar.style.width = (turnTimeLimit > 0) ? `${(timeLeft / turnTimeLimit) * 100}%` : "0%";
 }
 
-function changeTimeLimit(val) {
-  turnTimeLimit = parseInt(val, 10);
-  if (isHost) { startTurnTimer(); broadcastState(); }
-}
-
 function openRulesModal() { document.getElementById("rules-modal").style.display = "flex"; }
 function closeRulesModal() { document.getElementById("rules-modal").style.display = "none"; }
 
@@ -926,8 +967,6 @@ function broadcastState() {
     activePlayerIndex,
     cardsPlayedThisTurn,
     drawnCardsThisTurn,
-    turnTimeLimit,
-    timeLeft,
     currentRound,
     totalMatchRounds,
     isMatchOver
@@ -953,7 +992,7 @@ function createRoom() {
   if (!myName) { alert("Wpisz swoje imię!"); return; }
 
   const pin = Math.floor(1000 + Math.random() * 9000).toString();
-  currentRoomTopic = `gra11_v18_${pin}`;
+  currentRoomTopic = `gra11_match_${pin}`;
 
   mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
   mqttClient.on('connect', () => {
@@ -964,7 +1003,7 @@ function createRoom() {
 
     document.getElementById("room-pin-display").innerHTML = `🎮 PIN: <strong style="color:var(--yellow); font-size:1.15rem;">${pin}</strong>`;
     document.getElementById("lobby-setup-box").style.display = "none";
-    document.getElementById("player-count-buttons").style.display = "none";
+    document.getElementById("btn-add-local-player").style.display = "none";
     startNewGame(true);
   });
 
@@ -989,7 +1028,7 @@ function joinRoom() {
   const pin = document.getElementById("room-pin-input").value.trim();
   if (!myName || !pin) { alert("Wpisz imię i PIN!"); return; }
 
-  currentRoomTopic = `gra11_v18_${pin}`;
+  currentRoomTopic = `gra11_match_${pin}`;
   mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
 
   mqttClient.on('connect', () => {
@@ -1002,7 +1041,9 @@ function joinRoom() {
     document.getElementById("room-pin-display").innerHTML = `✅ PIN: <strong style="color:var(--success); font-size:1.15rem;">${pin}</strong>`;
     document.getElementById("lobby-setup-box").style.display = "none";
     document.getElementById("host-controls").style.display = "none";
-    document.getElementById("host-config-box").style.display = "none";
+    document.getElementById("btn-add-local-player").style.display = "none";
+    document.getElementById("rounds-btn-group").style.pointerEvents = "none";
+    document.getElementById("rounds-btn-group").style.opacity = "0.7";
   });
 
   mqttClient.on('message', (topic, message) => {
@@ -1015,13 +1056,15 @@ function joinRoom() {
         activePlayerIndex = data.activePlayerIndex;
         cardsPlayedThisTurn = data.cardsPlayedThisTurn;
         drawnCardsThisTurn = data.drawnCardsThisTurn;
-        turnTimeLimit = data.turnTimeLimit;
-        timeLeft = data.timeLeft;
         currentRound = data.currentRound;
         totalMatchRounds = data.totalMatchRounds;
         isMatchOver = data.isMatchOver;
         document.getElementById("deck-left-display").innerText = `Pozostało w talii: ${data.deckCount} kart`;
-        updateTimerDisplay();
+        document.getElementById("current-rules-pill").innerText = `Mecz do ${totalMatchRounds} partii`;
+        [1, 3, 5].forEach(r => {
+          const btn = document.getElementById(`btn-round-${r}`);
+          if (btn) btn.className = (r === totalMatchRounds) ? "round-btn-pill selected" : "round-btn-pill";
+        });
         render();
       }
     } catch(e){}
@@ -1045,7 +1088,7 @@ function render() {
     document.getElementById("deck-left-display").innerText = `Pozostało w talii: ${currentDeckCount} kart`;
   }
 
-  // Wskaźnik stosu 3D
+  // Wskaźnik stosu
   const stackVisual = document.getElementById("deck-3d-visual");
   if (currentDeckCount === 0) {
     stackVisual.style.opacity = "0.2";
@@ -1055,8 +1098,7 @@ function render() {
     stackVisual.style.boxShadow = `2px 2px 0px #1e293b, 4px 4px 0px #0284c7`;
   }
 
-  // Runda meczu
-  document.getElementById("match-round-indicator").innerText = `Partia ${currentRound} z ${totalMatchRounds}`;
+  document.getElementById("match-round-indicator").innerText = `MECZ: Partia ${currentRound} z ${totalMatchRounds}`;
 
   // Baner Tury
   const turnBanner = document.getElementById("global-turn-banner");
@@ -1083,9 +1125,7 @@ function render() {
     turnSub.innerText = `Czekaj na swój ruch...`;
   }
 
-  document.getElementById("players-total-count").innerText = players.length;
-
-  // Lista graczy
+  // LISTA GRACZY Z PUNKTACJĄ KARNĄ
   const pList = document.getElementById("players-list");
   pList.innerHTML = "";
   players.forEach((p, idx) => {
@@ -1104,14 +1144,14 @@ function render() {
         </div>
         <div class="player-stats-badge">
           ${isLastCard ? '<span class="badge-last-card">⚠️ 1 KARTA!</span>' : ''}
-          <span class="score-pill">${p.hand.length} kart</span>
-          <span class="penalty-pill" title="Łączne punkty karne w meczu">${p.penaltyPoints} pkt</span>
+          <span class="score-pill" title="Liczba kart w ręce">${p.hand.length} k.</span>
+          <span class="penalty-pill" title="Łączne punkty karne w meczu">PKT: ${p.penaltyPoints}</span>
         </div>
       </div>
     `;
   });
 
-  // Stół (Rzędy)
+  // Stół
   const lanesBox = document.getElementById("board-lanes");
   lanesBox.innerHTML = "";
   COLORS.forEach(color => {
@@ -1160,7 +1200,7 @@ function render() {
     });
   }
 
-  // LOGIKA PRZYCISKÓW (DOBIERANIE 1-3 KART ORAZ SPASUJ)
+  // Przyciski akcji
   const btnDraw = document.getElementById("btn-draw");
   const isDeckEmptyNoPlay = (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable);
 
@@ -1168,19 +1208,11 @@ function render() {
     btnDraw.innerText = "SPASUJ (BRAK KART)";
     btnDraw.disabled = !isMyTurn;
   } else {
-    // Pokazuj status dobierania (np. DOBIERZ (1/3), DOBIERZ (2/3))
-    if (drawnCardsThisTurn === 0) {
-      btnDraw.innerText = "DOBIERZ (DO 3)";
-    } else {
-      btnDraw.innerText = `DOBIERZ (${drawnCardsThisTurn}/3)`;
-    }
-    
-    // Dobieranie dozwolone tylko jeśli gracz nie ma ruchu (na początku) LUB dobrał już 1 albo 2 karty i dalej nie osiągnął limitu 3
+    btnDraw.innerText = (drawnCardsThisTurn === 0) ? "DOBIERZ (DO 3)" : `DOBIERZ (${drawnCardsThisTurn}/3)`;
     const canDraw = isMyTurn && (drawnCardsThisTurn < 3) && (cardsPlayedThisTurn === 0 && (drawnCardsThisTurn > 0 || !hasPlayable)) && currentDeckCount > 0;
     btnDraw.disabled = !canDraw;
   }
 
-  // Gracz może spasować jeśli wyłożył kartę, jeśli dobrał przynajmniej 1 kartę (nie musi dobierać 3!), lub gdy talia jest pusta
   const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || drawnCardsThisTurn > 0 || isDeckEmptyNoPlay);
   document.getElementById("btn-pass").disabled = !canPass;
 }
