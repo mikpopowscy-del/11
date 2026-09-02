@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>11 (Elfer Raus) Online</title>
+<script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<style>
+  :root {
+    --bg-main: #060d1d;
+    --bg-card: #0f172a;
+    --bg-inner: #1e293b;
+    --border: rgba(255, 255, 255, 0.12);
+    --red: #ef4444;
+    --blue: #38bdf8;
+    --yellow: #f59e0b;
+    --green: #10b981;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg-main); color: var(--text-main); padding: 8px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .game-wrapper { max-width: 1350px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+  /* GÓRNY PASEK Z BANEREM I ZNAKIEM ZAPYTANIA */
+  .top-bar-container { display: flex; gap: 8px; align-items: stretch; }
+  
+  .turn-banner {
+    flex: 1;
+    min-height: 52px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .turn-banner.my-turn {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+  }
+  .turn-banner.other-turn {
+    background: #1e293b;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  /* TIMER BAR */
+  .timer-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #fbbf24;
+    transition: width 1s linear;
+  }
+
+  /* PRZYCISK ZNAKU ZAPYTANIA */
+  .btn-help-corner {
+    width: 52px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--accent);
+    font-size: 1.4rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .btn-help-corner:active { transform: scale(0.94); }
+
+  /* GŁÓWNY UKŁAD (PC 2-KOLUMNY, TELEFON 1-KOLUMNA) */
+  .main-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  @media(min-width: 900px) {
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      align-items: start;
+    }
+  }
+
+  .panel {
+    background: var(--bg-card);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* RZĘDY NA STOLE */
+  .color-lane {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-left: 6px solid var(--border);
+    overflow-x: auto;
+    min-height: 80px;
+  }
+  .color-lane.red { border-left-color: var(--red); }
+  .color-lane.blue { border-left-color: var(--blue); }
+  .color-lane.yellow { border-left-color: var(--yellow); }
+  .color-lane.green { border-left-color: var(--green); }
+
+  .color-title { font-weight: 900; font-size: 0.8rem; width: 70px; text-transform: uppercase; flex-shrink: 0; }
+
+  /* KARTY */
+  .card-chip {
+    width: 44px;
+    height: 62px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    flex-shrink: 0;
+    user-select: none;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+  .card-chip.red { background: var(--red); }
+  .card-chip.blue { background: var(--blue); }
+  .card-chip.yellow { background: var(--yellow); color: #000; }
+  .card-chip.green { background: var(--green); }
+  .card-chip.empty-slot {
+    background: rgba(255,255,255,0.04);
+    border: 2px dashed rgba(255,255,255,0.2);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  /* RĘKA GRACZA */
+  .hand-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 4px;
+    min-height: 88px;
+    align-items: center;
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+  }
+  .hand-card {
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .hand-card.playable {
+    box-shadow: 0 0 16px #fff, 0 4px 10px rgba(0,0,0,0.5);
+    border: 2px solid #ffffff;
+    transform: translateY(-5px);
+  }
+  .hand-card:active { transform: scale(0.92); }
+
+  /* PRZYCISKI AKCJI (DOBIERZ / SPASUJ) */
+  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button.action-btn {
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 8px;
+    font-weight: 900;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: transform 0.1s;
+  }
+  button.action-btn:active:not(:disabled) { transform: scale(0.96); }
+  button:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-draw { background: var(--accent); color: #000; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4); }
+  .btn-pass { background: var(--success); color: #000; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
+
+  /* PRAWY PANEL (GRACZE & USTAWIENIA HOSTA) */
+  .pin-badge {
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .host-config-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .players-scroll { display: flex; flex-direction: column; gap: 8px; }
+  .player-slot {
+    background: var(--bg-inner);
+    border-radius: 10px;
+    padding: 10px;
+    border-left: 5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .player-slot.active {
+    border-left-color: var(--yellow);
+    background: #1a2f4c;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+  }
+
+  .score-pill { background: #0284c7; color: #fff; font-size: 0.8rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
+
+  /* MODAL Z ZASADAMI */
+  .rules-modal, .winner-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center;
+    z-index: 9999; padding: 16px;
+  }
+  .rules-box {
+    background: var(--bg-card);
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .rules-box h2 { color: var(--accent); margin-bottom: 10px; font-size: 1.2rem; }
+  .rules-box ul { margin-left: 18px; margin-bottom: 14px; font-size: 0.85rem; color: #cbd5e1; }
+  .rules-box li { margin-bottom: 6px; }
+
+  .winner-box {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 2px solid var(--yellow); border-radius: 20px; padding: 24px 16px;
+    text-align: center; max-width: 360px; width: 100%; box-shadow: 0 0 30px var(--yellow);
+  }
+</style>
+</head>
+<body>
+
+<div class="game-wrapper">
+  <!-- GÓRNY PASEK TURY ZE ZNAKIEM ZAPYTANIA -->
+  <div class="top-bar-container">
+    <div class="turn-banner other-turn" id="global-turn-banner">
+      <div id="turn-text">OCZEKIWANIE NA START</div>
+      <div style="font-size:0.75rem; font-weight:bold; margin-top:2px;" id="turn-sub-text"></div>
+      <div class="timer-progress" id="timer-progress-bar"></div>
+    </div>
+    <button class="btn-help-corner" onclick="openRulesModal()" title="Zasady gry">?</button>
+  </div>
+
+  <div class="main-grid">
+    <!-- LEWY PANEL: STÓŁ Z KOLORAMI ORAZ RĘKA GRACZA -->
+    <div class="panel">
+      <!-- Stół -->
+      <div style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">
+        Stół (Karty układane od 11 w dół do 1 oraz w górę do 20)
+      </div>
+      <div id="board-lanes" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+      <!-- Twoja Ręka -->
+      <div style="margin-top:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.9rem; font-weight:bold;">Twoja Ręka (<span id="my-cards-count">0</span> kart)</span>
+          <span style="font-size:0.75rem; color:var(--accent);" id="must-play-hint"></span>
+        </div>
+        <div class="hand-scroll" id="hand-cards-container"></div>
+      </div>
+
+      <!-- Przyciski Akcji -->
+      <div class="controls-grid">
+        <button class="action-btn btn-draw" id="btn-draw" onclick="actionDraw()">DOBIERZ</button>
+        <button class="action-btn btn-pass" id="btn-pass" onclick="actionPass()">SPASUJ</button>
+      </div>
+    </div>
+
+    <!-- PRAWY PANEL: LOBBY, GRACZE & USTAWIENIA HOSTA -->
+    <div class="panel">
+      <div class="pin-badge">
+        <span id="room-pin-display">🎮 PIN: <strong style="color:var(--yellow);">Lokalnie</strong></span>
+        <span style="font-size:0.75rem; color:var(--text-muted);" id="deck-left-display">Talia: 80 kart</span>
+      </div>
+
+      <!-- Ustawienia Hosta (Czas tury) -->
+      <div class="host-config-box" id="host-config-box">
+        <div style="font-size:0.8rem; font-weight:bold; color:var(--yellow);">⚙️ Ustawienia Hosta</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+          <span>Czas na ruch:</span>
+          <select id="time-limit-select" onchange="changeTimeLimit(this.value)" style="background:#1e293b; color:#fff; border:1px solid var(--border); padding:4px 8px; border-radius:6px;">
+            <option value="0">Bez limitu</option>
+            <option value="15">15 sekund</option>
+            <option value="30" selected>30 sekund</option>
+            <option value="45">45 sekund</option>
+            <option value="60">60 sekund</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Formularz tworzenia/dołączania -->
+      <div id="lobby-setup-box" style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="user-display-name-field" class="lobby-input" style="background:#1e293b; border:1px solid var(--border); color:#fff; padding:8px 10px; border-radius:8px; flex:1;" placeholder="Wpisz swoje imię" autocomplete="off">
+          <button class="action-btn btn-draw" style="flex:none; padding:8px 14px; font-size:0.85rem;" onclick="createRoom()">Hostuj</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="room-pin-input" class="lobby-input" style="background:#1e293b; border:1px solid var(--border); color:#fff; padding:8px 10px; border-radius:8px; flex:1;" placeholder="Wpisz 4-cyfrowy PIN">
+          <button class="action-btn" style="background:#334155; color:#fff; flex:none; padding:8px 14px; font-size:0.85rem;" onclick="joinRoom()">Dołącz</button>
+        </div>
+      </div>
+
+      <h3 style="margin: 4px 0 2px 0; font-size:0.95rem;">Gracze przy stole</h3>
+      <div class="players-scroll" id="players-list"></div>
+
+      <div style="display:flex; gap:8px; margin-top:auto;" id="host-controls">
+        <button class="action-btn" style="background:#6366f1; color:#fff; flex:1; font-size:0.85rem; padding:12px;" onclick="startNewGame()">🔁 Nowa Gra</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ZASAD GRY (?) -->
+<div class="rules-modal" id="rules-modal">
+  <div class="rules-box">
+    <h2>📖 Zasady gry 11 (Elfer raus!)</h2>
+    <ul>
+      <li><strong>Cel gry:</strong> Pozbyć się jako pierwszy wszystkich kart ze swojej ręki.</li>
+      <li><strong>Karta 11 otwiera rząd:</strong> Nowy kolor na stole można zacząć wyłącznie od wyłożenia karty o numerze <strong>11</strong>.</li>
+      <li><strong>Rozbudowa rzędów:</strong> Gdy na stole leży 11, można dokładać kolejne pasujące numery w dół (10 &rarr; 9 ... &rarr; 1) lub w górę (12 &rarr; 13 ... &rarr; 20).</li>
+      <li><strong>Obowiązek ruchu:</strong> Jeśli masz w ręku kartę pasującą na stół, <strong>musisz</strong> wyłożyć przynajmniej jedną kartę w swojej turze! Przycisk DOBIERZ jest wtedy zablokowany.</li>
+      <li><strong>Dobieranie:</strong> Jeśli nie masz żadnej pasującej karty, dobierasz 1 kartę z talii. Jeśli dobrana karta pasuje, możesz ją wyłożyć.</li>
+      <li><strong>Pasowanie:</strong> Spasować możesz dopiero po wyłożeniu minimum 1 karty lub po dobraniu karty z talii.</li>
+    </ul>
+    <button class="action-btn btn-draw" style="width:100%;" onclick="closeRulesModal()">Rozumiem</button>
+  </div>
+</div>
+
+<!-- MODAL ZWYCIĘZCY -->
+<div class="winner-modal" id="winner-modal">
+  <div class="winner-box">
+    <div style="font-size: 2.8rem; margin-bottom: 4px;">🏆</div>
+    <div style="font-size: 0.9rem; font-weight: 800; color: var(--yellow); text-transform: uppercase;">Zwycięzca Gry!</div>
+    <div id="winner-name-display" style="font-size: 1.8rem; font-weight: 900; color: #fff; margin: 8px 0;">GRACZ</div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Pozbył się wszystkich kart z ręki!</p>
+    <button class="action-btn btn-pass" style="width: 100%;" onclick="startNewGame()">Zagraj Ponownie</button>
+  </div>
+</div>
+
+<script>
+const COLORS = ['red', 'blue', 'yellow', 'green'];
+const COLOR_NAMES = { red: 'Czerwony', blue: 'Niebieski', yellow: 'Żółty', green: 'Zielony' };
+
+let deck = [];
+let board = {
+  red: { min: null, max: null },
+  blue: { min: null, max: null },
+  yellow: { min: null, max: null },
+  green: { min: null, max: null }
+};
+
+let players = [
+  { id: "local_1", name: "Gracz 1", hand: [] },
+  { id: "local_2", name: "Gracz 2", hand: [] }
+];
+let activePlayerIndex = 0;
+let cardsPlayedThisTurn = 0;
+let hasDrawnThisTurn = false;
+
+// TIMER HOSTA
+let turnTimeLimit = 30; // sekundy (0 = bez limitu)
+let timeLeft = 30;
+let timerInterval = null;
+
+// MULTIPLAYER (EMQX WSS)
+const MQTT_BROKER = "wss://broker.emqx.io:8084/mqtt";
+let mqttClient = null;
+let currentRoomTopic = null;
+let isHost = false;
+let myClientId = "p_" + Math.random().toString(36).substring(2, 10);
+let joinInterval = null;
+
+function initFullDeck() {
+  deck = [];
+  for (let c of COLORS) {
+    for (let i = 1; i <= 20; i++) {
+      deck.push({ color: c, value: i });
+    }
+  }
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+}
+
+function sortHand(hand) {
+  const order = { red: 1, blue: 2, yellow: 3, green: 4 };
+  hand.sort((a, b) => {
+    if (order[a.color] !== order[b.color]) return order[a.color] - order[b.color];
+    return a.value - b.value;
+  });
+}
+
+function startNewGame() {
+  document.getElementById("winner-modal").style.display = "none";
+  initFullDeck();
+
+  board = {
+    red: { min: null, max: null },
+    blue: { min: null, max: null },
+    yellow: { min: null, max: null },
+    green: { min: null, max: null }
+  };
+
+  // Każdy gracz otrzymuje po 12 kart na start
+  players.forEach(p => {
+    p.hand = [];
+    for (let k = 0; k < 12; k++) {
+      if (deck.length > 0) p.hand.push(deck.pop());
+    }
+    sortHand(p.hand);
+  });
+
+  activePlayerIndex = 0;
+  cardsPlayedThisTurn = 0;
+  hasDrawnThisTurn = false;
+  
+  startTurnTimer();
+  broadcastState();
+  render();
+}
+
+function canPlayCard(card) {
+  const lane = board[card.color];
+  if (card.value === 11) {
+    return lane.min === null;
+  }
+  if (lane.min === null) return false;
+  return card.value === lane.min - 1 || card.value === lane.max + 1;
+}
+
+function hasAnyPlayableCard(hand) {
+  return hand.some(c => canPlayCard(c));
+}
+
+// WYŁOŻENIE KARTY Z RĘKI
+function playCard(cardIdx) {
+  const p = players[activePlayerIndex];
+  const isOnline = !!mqttClient;
+  if (isOnline && p.id !== myClientId) return;
+
+  const card = p.hand[cardIdx];
+  if (!canPlayCard(card)) return;
+
+  if (isOnline && !isHost) {
+    sendAction({ type: "PLAY", cardIdx });
+    return;
+  }
+
+  p.hand.splice(cardIdx, 1);
+  cardsPlayedThisTurn++;
+
+  const lane = board[card.color];
+  if (card.value === 11) {
+    lane.min = 11;
+    lane.max = 11;
+  } else if (card.value < lane.min) {
+    lane.min = card.value;
+  } else if (card.value > lane.max) {
+    lane.max = card.value;
+  }
+
+  if (p.hand.length === 0) {
+    clearInterval(timerInterval);
+    broadcastState();
+    render();
+    showWinner(p.name);
+    return;
+  }
+
+  broadcastState();
+  render();
+}
+
+// AKCJA DOBIERZ
+function actionDraw() {
+  const p = players[activePlayerIndex];
+  const isOnline = !!mqttClient;
+  if (isOnline && p.id !== myClientId) return;
+  
+  // ZASADA: Nie można dobierać jeśli gracz ma pasującą kartę lub już dobrał
+  if (hasAnyPlayableCard(p.hand) && cardsPlayedThisTurn === 0) return;
+  if (hasDrawnThisTurn) return;
+
+  if (isOnline && !isHost) {
+    sendAction({ type: "DRAW" });
+    return;
+  }
+
+  if (deck.length > 0) {
+    p.hand.push(deck.pop());
+    sortHand(p.hand);
+    hasDrawnThisTurn = true;
+  }
+
+  broadcastState();
+  render();
+}
+
+// AKCJA SPASUJ
+function actionPass() {
+  const p = players[activePlayerIndex];
+  const isOnline = !!mqttClient;
+  if (isOnline && p.id !== myClientId) return;
+
+  // ZASADA: Nie można spasować bez zagrania karty (chyba że gracz dobrał z talii)
+  if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn) return;
+
+  if (isOnline && !isHost) {
+    sendAction({ type: "PASS" });
+    return;
+  }
+
+  nextTurn();
+}
+
+function nextTurn() {
+  activePlayerIndex = (activePlayerIndex + 1) % players.length;
+  cardsPlayedThisTurn = 0;
+  hasDrawnThisTurn = false;
+  startTurnTimer();
+  broadcastState();
+  render();
+}
+
+// LICZNIK CZASU TURY
+function startTurnTimer() {
+  clearInterval(timerInterval);
+  if (turnTimeLimit <= 0) {
+    timeLeft = 0;
+    return;
+  }
+
+  timeLeft = turnTimeLimit;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      if (isHost) {
+        // Auto ruch po upływie czasu: jeśli gracz nie dołożył, dobiera kartę i tura mija
+        const p = players[activePlayerIndex];
+        if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn && deck.length > 0) {
+          p.hand.push(deck.pop());
+          sortHand(p.hand);
+        }
+        nextTurn();
+      }
+    }
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const bar = document.getElementById("timer-progress-bar");
+  if (turnTimeLimit > 0) {
+    const pct = (timeLeft / turnTimeLimit) * 100;
+    bar.style.width = `${pct}%`;
+  } else {
+    bar.style.width = "0%";
+  }
+}
+
+function changeTimeLimit(val) {
+  turnTimeLimit = parseInt(val, 10);
+  if (isHost) {
+    startTurnTimer();
+    broadcastState();
+  }
+}
+
+function showWinner(name) {
+  document.getElementById("winner-name-display").innerText = name.toUpperCase();
+  document.getElementById("winner-modal").style.display = "flex";
+}
+
+function openRulesModal() { document.getElementById("rules-modal").style.display = "flex"; }
+function closeRulesModal() { document.getElementById("rules-modal").style.display = "none"; }
+
+// SYNCHRONIZACJA SIECIOWA (MQTT)
+function broadcastState() {
+  if (!isHost || !mqttClient || !currentRoomTopic) return;
+  const payload = {
+    type: "SYNC",
+    board,
+    players,
+    deckCount: deck.length,
+    activePlayerIndex,
+    cardsPlayedThisTurn,
+    hasDrawnThisTurn,
+    turnTimeLimit,
+    timeLeft
+  };
+  mqttClient.publish(currentRoomTopic + "/state", JSON.stringify(payload));
+}
+
+function sendAction(actionData) {
+  if (mqttClient && currentRoomTopic) {
+    mqttClient.publish(currentRoomTopic + "/actions", JSON.stringify({ senderId: myClientId, action: actionData }));
+  }
+}
+
+function handleIncomingAction(action) {
+  if (action.type === "PLAY") playCard(action.cardIdx);
+  else if (action.type === "DRAW") actionDraw();
+  else if (action.type === "PASS") actionPass();
+}
+
+function createRoom() {
+  const nameInput = document.getElementById("user-display-name-field");
+  const myName = nameInput.value.trim();
+  if (!myName) { alert("Wpisz swoje imię!"); return; }
+
+  const pin = Math.floor(1000 + Math.random() * 9000).toString();
+  currentRoomTopic = `gra11_pro_${pin}`;
+
+  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
+  mqttClient.on('connect', () => {
+    isHost = true;
+    players = [{ id: myClientId, name: myName, hand: [] }];
+    mqttClient.subscribe(currentRoomTopic + "/actions");
+    mqttClient.subscribe(currentRoomTopic + "/join");
+
+    document.getElementById("room-pin-display").innerHTML = `🎮 PIN: <strong style="color:var(--yellow); font-size:1.15rem;">${pin}</strong>`;
+    document.getElementById("lobby-setup-box").style.display = "none";
+    startNewGame();
+  });
+
+  mqttClient.on('message', (topic, message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      if (topic.endsWith("/join")) {
+        if (!players.some(p => p.id === data.id)) {
+          players.push({ id: data.id, name: data.name, hand: [] });
+          for (let k = 0; k < 12; k++) {
+            if (deck.length > 0) players[players.length - 1].hand.push(deck.pop());
+          }
+          sortHand(players[players.length - 1].hand);
+          broadcastState();
+          render();
+        }
+      } else if (topic.endsWith("/actions")) {
+        handleIncomingAction(data.action);
+      }
+    } catch(e){}
+  });
+}
+
+function joinRoom() {
+  const nameInput = document.getElementById("user-display-name-field");
+  const myName = nameInput.value.trim();
+  const pin = document.getElementById("room-pin-input").value.trim();
+  if (!myName || !pin) { alert("Wpisz imię i PIN!"); return; }
+
+  currentRoomTopic = `gra11_pro_${pin}`;
+  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
+
+  mqttClient.on('connect', () => {
+    isHost = false;
+    mqttClient.subscribe(currentRoomTopic + "/state");
+    
+    joinInterval = setInterval(() => {
+      mqttClient.publish(currentRoomTopic + "/join", JSON.stringify({ id: myClientId, name: myName }));
+    }, 400);
+
+    document.getElementById("room-pin-display").innerHTML = `✅ PIN: <strong style="color:var(--success); font-size:1.15rem;">${pin}</strong>`;
+    document.getElementById("lobby-setup-box").style.display = "none";
+    document.getElementById("host-controls").style.display = "none";
+    document.getElementById("host-config-box").style.display = "none";
+  });
+
+  mqttClient.on('message', (topic, message) => {
+    try {
+      if (topic.endsWith("/state")) {
+        if (joinInterval) { clearInterval(joinInterval); joinInterval = null; }
+        const data = JSON.parse(message.toString());
+        board = data.board;
+        players = data.players;
+        activePlayerIndex = data.activePlayerIndex;
+        cardsPlayedThisTurn = data.cardsPlayedThisTurn;
+        hasDrawnThisTurn = data.hasDrawnThisTurn;
+        turnTimeLimit = data.turnTimeLimit;
+        timeLeft = data.timeLeft;
+        document.getElementById("deck-left-display").innerText = `Talia: ${data.deckCount} kart`;
+        updateTimerDisplay();
+        render();
+      }
+    } catch(e){}
+  });
+}
+
+// RENDEROWANIE INTERFEJSU
+function render() {
+  const isOnline = !!mqttClient;
+  const currPlayer = players[activePlayerIndex];
+  const isMyTurn = !isOnline ? true : (currPlayer && currPlayer.id === myClientId);
+
+  const myPlayer = isOnline ? (players.find(p => p.id === myClientId) || currPlayer) : currPlayer;
+  const myPlayableCards = myPlayer && myPlayer.hand ? myPlayer.hand.filter(c => canPlayCard(c)) : [];
+  const hasPlayable = myPlayableCards.length > 0;
+
+  // Baner Tury
+  const turnBanner = document.getElementById("global-turn-banner");
+  const turnText = document.getElementById("turn-text");
+  const turnSub = document.getElementById("turn-sub-text");
+
+  if (isMyTurn) {
+    turnBanner.className = "turn-banner my-turn";
+    turnText.innerHTML = "👉 TWOJA TURA!";
+    if (cardsPlayedThisTurn === 0 && hasPlayable) {
+      turnSub.innerText = "Musisz wyłożyć przynajmniej jedną kartę!";
+    } else if (cardsPlayedThisTurn > 0) {
+      turnSub.innerText = `Wyłożono kart: ${cardsPlayedThisTurn}. Możesz dokładać dalej lub spasować.`;
+    } else if (hasDrawnThisTurn) {
+      turnSub.innerText = "Dobrano kartę. Wyłóż ją lub spasuj.";
+    } else {
+      turnSub.innerText = "Brak ruchu na stole. Dobierz kartę z talii.";
+    }
+  } else {
+    turnBanner.className = "turn-banner other-turn";
+    turnText.innerHTML = `⏳ TURA GRACZA: <strong>${currPlayer ? currPlayer.name.toUpperCase() : ''}</strong>`;
+    turnSub.innerText = "";
+  }
+
+  // Lista graczy
+  const pList = document.getElementById("players-list");
+  pList.innerHTML = "";
+  players.forEach((p, idx) => {
+    const isAct = idx === activePlayerIndex;
+    const isMe = p.id === myClientId;
+    pList.innerHTML += `
+      <div class="player-slot ${isAct ? 'active' : ''}">
+        <span style="${isMe ? 'color:var(--accent); font-weight:900;' : ''}">${p.name} ${isAct ? '▶' : ''}</span>
+        <span class="score-pill">${p.hand.length} kart</span>
+      </div>
+    `;
+  });
+
+  // Stół (Rzędy 4 kolorów)
+  const lanesBox = document.getElementById("board-lanes");
+  lanesBox.innerHTML = "";
+  COLORS.forEach(color => {
+    const lane = board[color];
+    let cardsHtml = "";
+
+    if (lane.min === null) {
+      cardsHtml = `<div class="card-chip empty-slot">11</div>`;
+    } else {
+      for (let v = lane.min; v <= lane.max; v++) {
+        cardsHtml += `<div class="card-chip ${color}">${v}</div>`;
+      }
+    }
+
+    lanesBox.innerHTML += `
+      <div class="color-lane ${color}">
+        <div class="color-title">${COLOR_NAMES[color]}</div>
+        ${cardsHtml}
+      </div>
+    `;
+  });
+
+  // Ręka gracza
+  const hContainer = document.getElementById("hand-cards-container");
+  hContainer.innerHTML = "";
+
+  if (myPlayer && myPlayer.hand) {
+    document.getElementById("my-cards-count").innerText = myPlayer.hand.length;
+    document.getElementById("must-play-hint").innerText = (isMyTurn && hasPlayable && cardsPlayedThisTurn === 0) 
+      ? "⚠️ Obowiązkowy ruch!" : "";
+
+    myPlayer.hand.forEach((c, idx) => {
+      const playable = isMyTurn && canPlayCard(c);
+      const div = document.createElement("div");
+      div.className = `card-chip ${c.color} hand-card ${playable ? 'playable' : ''}`;
+      div.innerText = c.value;
+      if (playable) {
+        div.onclick = () => playCard(idx);
+      }
+      hContainer.appendChild(div);
+    });
+  }
+
+  // LOGIKA PRZYCISKÓW (OBOWIĄZEK RUCHU)
+  // DOBIERZ: Dostępne tylko gdy gracz NIE ma pasującej karty i jeszcze w tej turze nie dobrał
+  const canDraw = isMyTurn && !hasDrawnThisTurn && (cardsPlayedThisTurn === 0 && !hasPlayable);
+  document.getElementById("btn-draw").disabled = !canDraw;
+
+  // SPASUJ: Dostępne tylko gdy wyłożono min. 1 kartę LUB gdy gracz dobrał już z talii
+  const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || hasDrawnThisTurn);
+  document.getElementById("btn-pass").disabled = !canPass;
+}
+
+startNewGame();
+</script>
+</body>
+</html>
