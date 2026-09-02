@@ -83,7 +83,7 @@
   }
   .btn-help-corner:active { transform: scale(0.94); }
 
-  /* GŁÓWNY UKŁAD (PC 2-KOLUMNY, TELEFON 1-KOLUMNA) */
+  /* GŁÓWNY UKŁAD */
   .main-grid {
     display: flex;
     flex-direction: column;
@@ -177,7 +177,7 @@
   }
   .hand-card:active { transform: scale(0.92); }
 
-  /* PRZYCISKI AKCJI (DOBIERZ / SPASUJ) */
+  /* PRZYCISKI AKCJI (ZIELONY DOBIERZ I ZAGRAJ PONOWNIE) */
   .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   button.action-btn {
     cursor: pointer;
@@ -192,10 +192,24 @@
   }
   button.action-btn:active:not(:disabled) { transform: scale(0.96); }
   button:disabled { opacity: 0.25; cursor: not-allowed; }
-  .btn-draw { background: var(--accent); color: #000; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4); }
-  .btn-pass { background: var(--success); color: #000; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
+  
+  .btn-draw {
+    background: #10b981;
+    color: #062419;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45);
+  }
+  .btn-pass {
+    background: #eab308;
+    color: #000;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+  }
+  .btn-restart {
+    background: #10b981;
+    color: #062419;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+  }
 
-  /* PRAWY PANEL (GRACZE & USTAWIENIA HOSTA) */
+  /* PRAWY PANEL */
   .pin-badge {
     background: rgba(56, 189, 248, 0.08);
     border: 1px solid var(--border);
@@ -234,9 +248,28 @@
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
   }
 
+  .player-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-rename {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .btn-rename:hover {
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
   .score-pill { background: #0284c7; color: #fff; font-size: 0.8rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
 
-  /* MODAL Z ZASADAMI */
+  /* MODALE */
   .rules-modal, .winner-modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center;
@@ -340,7 +373,7 @@
       <div class="players-scroll" id="players-list"></div>
 
       <div style="display:flex; gap:8px; margin-top:auto;" id="host-controls">
-        <button class="action-btn" style="background:#6366f1; color:#fff; flex:1; font-size:0.85rem; padding:12px;" onclick="startNewGame()">🔁 Nowa Gra</button>
+        <button class="action-btn btn-restart" style="width:100%; padding:12px; font-size:0.85rem;" onclick="startNewGame()">🔁 Nowa Gra</button>
       </div>
     </div>
   </div>
@@ -369,7 +402,7 @@
     <div style="font-size: 0.9rem; font-weight: 800; color: var(--yellow); text-transform: uppercase;">Zwycięzca Gry!</div>
     <div id="winner-name-display" style="font-size: 1.8rem; font-weight: 900; color: #fff; margin: 8px 0;">GRACZ</div>
     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Pozbył się wszystkich kart z ręki!</p>
-    <button class="action-btn btn-pass" style="width: 100%;" onclick="startNewGame()">Zagraj Ponownie</button>
+    <button class="action-btn btn-restart" style="width: 100%; padding: 14px;" onclick="startNewGame()">ZAGRAJ PONOWNIE</button>
   </div>
 </div>
 
@@ -394,7 +427,7 @@ let cardsPlayedThisTurn = 0;
 let hasDrawnThisTurn = false;
 
 // TIMER HOSTA
-let turnTimeLimit = 30; // sekundy (0 = bez limitu)
+let turnTimeLimit = 30;
 let timeLeft = 30;
 let timerInterval = null;
 
@@ -438,7 +471,6 @@ function startNewGame() {
     green: { min: null, max: null }
   };
 
-  // Każdy gracz otrzymuje po 12 kart na start
   players.forEach(p => {
     p.hand = [];
     for (let k = 0; k < 12; k++) {
@@ -456,6 +488,17 @@ function startNewGame() {
   render();
 }
 
+// ZMIANA NAZWY POSTACI
+function renamePlayer(idx) {
+  const p = players[idx];
+  const newName = prompt("Wpisz nowe imię gracza:", p.name);
+  if (newName && newName.trim() !== "") {
+    p.name = newName.trim();
+    broadcastState();
+    render();
+  }
+}
+
 function canPlayCard(card) {
   const lane = board[card.color];
   if (card.value === 11) {
@@ -469,7 +512,6 @@ function hasAnyPlayableCard(hand) {
   return hand.some(c => canPlayCard(c));
 }
 
-// WYŁOŻENIE KARTY Z RĘKI
 function playCard(cardIdx) {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
@@ -508,13 +550,11 @@ function playCard(cardIdx) {
   render();
 }
 
-// AKCJA DOBIERZ
 function actionDraw() {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
   
-  // ZASADA: Nie można dobierać jeśli gracz ma pasującą kartę lub już dobrał
   if (hasAnyPlayableCard(p.hand) && cardsPlayedThisTurn === 0) return;
   if (hasDrawnThisTurn) return;
 
@@ -533,13 +573,11 @@ function actionDraw() {
   render();
 }
 
-// AKCJA SPASUJ
 function actionPass() {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
 
-  // ZASADA: Nie można spasować bez zagrania karty (chyba że gracz dobrał z talii)
   if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn) return;
 
   if (isOnline && !isHost) {
@@ -559,7 +597,6 @@ function nextTurn() {
   render();
 }
 
-// LICZNIK CZASU TURY
 function startTurnTimer() {
   clearInterval(timerInterval);
   if (turnTimeLimit <= 0) {
@@ -573,7 +610,6 @@ function startTurnTimer() {
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       if (isHost) {
-        // Auto ruch po upływie czasu: jeśli gracz nie dołożył, dobiera kartę i tura mija
         const p = players[activePlayerIndex];
         if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn && deck.length > 0) {
           p.hand.push(deck.pop());
@@ -612,7 +648,6 @@ function showWinner(name) {
 function openRulesModal() { document.getElementById("rules-modal").style.display = "flex"; }
 function closeRulesModal() { document.getElementById("rules-modal").style.display = "none"; }
 
-// SYNCHRONIZACJA SIECIOWA (MQTT)
 function broadcastState() {
   if (!isHost || !mqttClient || !currentRoomTopic) return;
   const payload = {
@@ -724,7 +759,6 @@ function joinRoom() {
   });
 }
 
-// RENDEROWANIE INTERFEJSU
 function render() {
   const isOnline = !!mqttClient;
   const currPlayer = players[activePlayerIndex];
@@ -734,7 +768,7 @@ function render() {
   const myPlayableCards = myPlayer && myPlayer.hand ? myPlayer.hand.filter(c => canPlayCard(c)) : [];
   const hasPlayable = myPlayableCards.length > 0;
 
-  // Baner Tury
+  // Baner tury
   const turnBanner = document.getElementById("global-turn-banner");
   const turnText = document.getElementById("turn-text");
   const turnSub = document.getElementById("turn-sub-text");
@@ -749,7 +783,7 @@ function render() {
     } else if (hasDrawnThisTurn) {
       turnSub.innerText = "Dobrano kartę. Wyłóż ją lub spasuj.";
     } else {
-      turnSub.innerText = "Brak ruchu na stole. Dobierz kartę z talii.";
+      turnSub.innerText = "Brak pasujących kart. Dobierz z talii.";
     }
   } else {
     turnBanner.className = "turn-banner other-turn";
@@ -757,7 +791,7 @@ function render() {
     turnSub.innerText = "";
   }
 
-  // Lista graczy
+  // Lista graczy z opcją zmiany imienia
   const pList = document.getElementById("players-list");
   pList.innerHTML = "";
   players.forEach((p, idx) => {
@@ -765,13 +799,16 @@ function render() {
     const isMe = p.id === myClientId;
     pList.innerHTML += `
       <div class="player-slot ${isAct ? 'active' : ''}">
-        <span style="${isMe ? 'color:var(--accent); font-weight:900;' : ''}">${p.name} ${isAct ? '▶' : ''}</span>
+        <div class="player-name-wrapper">
+          <span style="${isMe ? 'color:var(--accent); font-weight:900;' : 'font-weight:bold;'}">${p.name} ${isAct ? '▶' : ''}</span>
+          <button class="btn-rename" onclick="renamePlayer(${idx})" title="Zmień imię">✏️</button>
+        </div>
         <span class="score-pill">${p.hand.length} kart</span>
       </div>
     `;
   });
 
-  // Stół (Rzędy 4 kolorów)
+  // Stół (Rzędy)
   const lanesBox = document.getElementById("board-lanes");
   lanesBox.innerHTML = "";
   COLORS.forEach(color => {
@@ -815,12 +852,10 @@ function render() {
     });
   }
 
-  // LOGIKA PRZYCISKÓW (OBOWIĄZEK RUCHU)
-  // DOBIERZ: Dostępne tylko gdy gracz NIE ma pasującej karty i jeszcze w tej turze nie dobrał
+  // PRZYCISKI
   const canDraw = isMyTurn && !hasDrawnThisTurn && (cardsPlayedThisTurn === 0 && !hasPlayable);
   document.getElementById("btn-draw").disabled = !canDraw;
 
-  // SPASUJ: Dostępne tylko gdy wyłożono min. 1 kartę LUB gdy gracz dobrał już z talii
   const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || hasDrawnThisTurn);
   document.getElementById("btn-pass").disabled = !canPass;
 }
