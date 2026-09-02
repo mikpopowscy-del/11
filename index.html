@@ -198,7 +198,7 @@
     border-radius: 10px;
     padding: 13px 8px;
     font-weight: 900;
-    font-size: 1rem;
+    font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     transition: transform 0.1s;
@@ -339,7 +339,7 @@
       </div>
 
       <div class="controls-grid">
-        <button class="action-btn btn-draw" id="btn-draw" onclick="actionDraw()">DOBIERZ</button>
+        <button class="action-btn btn-draw" id="btn-draw" onclick="handleDrawOrPassClick()">DOBIERZ</button>
         <button class="action-btn btn-pass" id="btn-pass" onclick="actionPass()">SPASUJ</button>
       </div>
     </div>
@@ -399,10 +399,10 @@
       <li><strong>Liczba graczy:</strong> Od 2 do 6 graczy.</li>
       <li><strong>Cel gry:</strong> Pozbyć się jako pierwszy wszystkich kart z ręki.</li>
       <li><strong>Karta 11 otwiera rząd:</strong> Każdy kolor na stole musi zacząć się od karty <strong>11</strong>.</li>
-      <li><strong>Dynamiczna talia:</strong> Szansa na karty 11 jest zwiększona, aby gra szybciej się otwierała.</li>
+      <li><strong>Dynamiczna talia:</strong> Zwiększona szansa na 11, aby gra szybko się otwierała.</li>
       <li><strong>Rozbudowa:</strong> Dokładaj numery w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
       <li><strong>Obowiązek ruchu:</strong> Jeśli masz pasującą kartę, musisz wyłożyć minimum jedną! Przycisk DOBIERZ jest wtedy zablokowany.</li>
-      <li><strong>Dobieranie:</strong> Jeśli nie masz ruchu, dobierasz kartę z talii.</li>
+      <li><strong>Koniec talii:</strong> Gdy w talii nie ma już kart (0), a gracz nie może nic dołożyć, przycisk dobierania automatycznie zmienia się na <strong>SPASUJ</strong>.</li>
     </ul>
     <button class="action-btn btn-draw" style="width:100%;" onclick="closeRulesModal()">Rozumiem</button>
   </div>
@@ -452,7 +452,6 @@ let isHost = false;
 let myClientId = "p_" + Math.random().toString(36).substring(2, 10);
 let joinInterval = null;
 
-// PRZEŁĄCZNIK MOTYWU
 function toggleTheme() {
   const body = document.body;
   body.classList.toggle("light-theme");
@@ -464,19 +463,16 @@ function toggleTheme() {
   }
 }
 
-// DYNAMICZNA TALIA ZE ZWIĘKSZONĄ SZANSĄ NA 11
 function initFullDeck() {
   deck = [];
   for (let c of COLORS) {
     for (let i = 1; i <= 20; i++) {
       deck.push({ color: c, value: i });
-      // Dodatkowa kopia 11 dla każdego koloru, aby gra natychmiast ruszyła
       if (i === 11) {
         deck.push({ color: c, value: 11 });
       }
     }
   }
-  // Tasowanie Fisher-Yates
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -502,7 +498,6 @@ function startNewGame() {
     green: { min: null, max: null }
   };
 
-  // Liczba kart startowych zależy od liczby graczy (2 graczy = 14, 3-4 = 11, 5-6 = 9)
   const startingCardsCount = players.length === 2 ? 14 : (players.length <= 4 ? 11 : 9);
 
   players.forEach(p => {
@@ -522,7 +517,6 @@ function startNewGame() {
   render();
 }
 
-// ZARZĄDZANIE GRACZAMI (2-6)
 function addPlayerPrompt() {
   if (players.length >= 6) {
     alert("Maksymalna liczba graczy to 6!");
@@ -560,7 +554,7 @@ function renamePlayer(idx) {
 function canPlayCard(card) {
   const lane = board[card.color];
   if (card.value === 11) {
-    return true; // Zawsze można wyłożyć 11 jeśli rząd jeszcze nie istnieje lub dołożyć do puli
+    return true;
   }
   if (lane.min === null) return false;
   return card.value === lane.min - 1 || card.value === lane.max + 1;
@@ -610,6 +604,23 @@ function playCard(cardIdx) {
   render();
 }
 
+// OBSŁUGA PRZYCISKU DOBIERZ / SPASUJ (GDY BRAK KART W TALII)
+function handleDrawOrPassClick() {
+  const p = players[activePlayerIndex];
+  const isOnline = !!mqttClient;
+  if (isOnline && p.id !== myClientId) return;
+
+  const currentDeckCount = isOnline ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
+  const hasPlayable = hasAnyPlayableCard(p.hand);
+
+  // Jeśli talia jest pusta i gracz nie ma pasujących kart -> akcja działa jako spasowanie
+  if (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable) {
+    actionPass();
+  } else {
+    actionDraw();
+  }
+}
+
 function actionDraw() {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
@@ -638,7 +649,12 @@ function actionPass() {
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
 
-  if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn) return;
+  const currentDeckCount = isOnline ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
+  const hasPlayable = hasAnyPlayableCard(p.hand);
+
+  // Pasowanie jest dozwolone gdy: wyłożono kartę, dobrano z talii, LUB gdy talia jest pusta i brak ruchu
+  const canLegallyPass = (cardsPlayedThisTurn > 0) || hasDrawnThisTurn || (currentDeckCount === 0 && !hasPlayable);
+  if (!canLegallyPass) return;
 
   if (isOnline && !isHost) {
     sendAction({ type: "PASS" });
@@ -823,6 +839,14 @@ function render() {
   const myPlayer = isOnline ? (players.find(p => p.id === myClientId) || currPlayer) : currPlayer;
   const myPlayableCards = myPlayer && myPlayer.hand ? myPlayer.hand.filter(c => canPlayCard(c)) : [];
   const hasPlayable = myPlayableCards.length > 0;
+  
+  const currentDeckCount = isOnline 
+    ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) 
+    : deck.length;
+
+  if (!isOnline) {
+    document.getElementById("deck-left-display").innerText = `Talia: ${currentDeckCount} kart`;
+  }
 
   // Baner
   const turnBanner = document.getElementById("global-turn-banner");
@@ -838,6 +862,8 @@ function render() {
       turnSub.innerText = `Wyłożono kart: ${cardsPlayedThisTurn}. Dokładaj dalej lub spasuj.`;
     } else if (hasDrawnThisTurn) {
       turnSub.innerText = "Dobrano kartę. Wyłóż ją lub spasuj.";
+    } else if (currentDeckCount === 0 && !hasPlayable) {
+      turnSub.innerText = "Talia jest pusta i brak pasujących kart. Spasuj ruch.";
     } else {
       turnSub.innerText = "Brak pasujących kart. Dobierz z talii.";
     }
@@ -912,11 +938,20 @@ function render() {
     });
   }
 
-  // Przyciski akcji
-  const canDraw = isMyTurn && !hasDrawnThisTurn && (cardsPlayedThisTurn === 0 && !hasPlayable);
-  document.getElementById("btn-draw").disabled = !canDraw;
+  // LOGIKA PRZYCISKÓW (ZMIANA DOBIERZ -> SPASUJ PRZY PUSTEJ TALII)
+  const btnDraw = document.getElementById("btn-draw");
+  const isDeckEmptyNoPlay = (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable);
 
-  const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || hasDrawnThisTurn);
+  if (isDeckEmptyNoPlay) {
+    btnDraw.innerText = "SPASUJ (BRAK KART)";
+    btnDraw.disabled = !isMyTurn;
+  } else {
+    btnDraw.innerText = "DOBIERZ";
+    const canDraw = isMyTurn && !hasDrawnThisTurn && (cardsPlayedThisTurn === 0 && !hasPlayable) && currentDeckCount > 0;
+    btnDraw.disabled = !canDraw;
+  }
+
+  const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || hasDrawnThisTurn || isDeckEmptyNoPlay);
   document.getElementById("btn-pass").disabled = !canPass;
 }
 
