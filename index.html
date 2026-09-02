@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>11 (Elfer Raus) Online</title>
+<title>11 (Elfer Raus) Pro</title>
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
 <style>
   :root {
@@ -35,23 +35,23 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg-main); color: var(--text-main); padding: 8px; min-height: 100vh; display: flex; flex-direction: column; transition: background 0.3s, color 0.3s; }
+  body { background: var(--bg-main); color: var(--text-main); padding: 8px; min-height: 100vh; display: flex; flex-direction: column; transition: background 0.3s, color 0.3s; overflow-x: hidden; }
 
-  .game-wrapper { max-width: 1350px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .game-wrapper { max-width: 1350px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 10px; position: relative; }
 
   /* GÓRNY PASEK */
   .top-bar-container { display: flex; gap: 8px; align-items: stretch; }
   
   .turn-banner {
     flex: 1;
-    min-height: 52px;
+    min-height: 56px;
     padding: 10px 14px;
     border-radius: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -64,11 +64,17 @@
     background: linear-gradient(135deg, #059669 0%, #10b981 100%);
     color: #fff;
     box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    animation: pulseActive 1.4s infinite alternate;
   }
   .turn-banner.other-turn {
     background: var(--bg-inner);
     color: var(--text-muted);
     border: 1px solid var(--border);
+  }
+
+  @keyframes pulseActive {
+    0% { transform: scale(0.995); }
+    100% { transform: scale(1.01); }
   }
 
   .timer-progress {
@@ -126,20 +132,28 @@
   .color-lane {
     background: var(--bg-inner);
     border-radius: 10px;
-    padding: 10px;
+    padding: 8px 10px;
     display: flex;
     align-items: center;
     gap: 6px;
     border-left: 6px solid var(--border);
     overflow-x: auto;
-    min-height: 80px;
+    min-height: 78px;
+    position: relative;
   }
   .color-lane.red { border-left-color: var(--red); }
   .color-lane.blue { border-left-color: var(--blue); }
   .color-lane.yellow { border-left-color: var(--yellow); }
   .color-lane.green { border-left-color: var(--green); }
 
-  .color-title { font-weight: 900; font-size: 0.8rem; width: 70px; text-transform: uppercase; flex-shrink: 0; }
+  .color-title-box {
+    display: flex;
+    flex-direction: column;
+    width: 75px;
+    flex-shrink: 0;
+  }
+  .color-title { font-weight: 900; font-size: 0.8rem; text-transform: uppercase; }
+  .lane-progress { font-size: 0.65rem; color: var(--text-muted); font-weight: bold; }
 
   /* KARTY */
   .card-chip {
@@ -162,7 +176,7 @@
   .card-chip.yellow { background: var(--yellow); color: #000; }
   .card-chip.green { background: var(--green); }
   .card-chip.empty-slot {
-    background: rgba(0,0,0,0.05);
+    background: rgba(0,0,0,0.06);
     border: 2px dashed var(--text-muted);
     color: var(--text-muted);
     font-size: 0.85rem;
@@ -173,8 +187,8 @@
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding: 8px 4px;
-    min-height: 88px;
+    padding: 10px 6px;
+    min-height: 90px;
     align-items: center;
     background: var(--bg-inner);
     border-radius: 10px;
@@ -190,7 +204,7 @@
   }
   .hand-card:active { transform: scale(0.92); }
 
-  /* PRZYCISKI */
+  /* PRZYCISKI AKCJI */
   .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   button.action-btn {
     cursor: pointer;
@@ -222,29 +236,27 @@
     box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
   }
 
-  /* PRAWY PANEL */
-  .pin-badge {
-    background: rgba(56, 189, 248, 0.08);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 0.9rem;
-    font-weight: bold;
+  /* WIZUALNA TALIA 3D */
+  .deck-visual-box {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-  }
-
-  .host-config-box {
+    gap: 12px;
     background: var(--bg-inner);
-    border: 1px solid var(--border);
+    padding: 8px 12px;
     border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    border: 1px solid var(--border);
+  }
+  .deck-3d-stack {
+    width: 38px;
+    height: 54px;
+    background: repeating-linear-gradient(45deg, #1e3a8a, #1e3a8a 6px, #172554 6px, #172554 12px);
+    border: 2px solid #60a5fa;
+    border-radius: 6px;
+    box-shadow: 3px 3px 0px #1e293b, 5px 5px 0px #0284c7;
+    flex-shrink: 0;
   }
 
+  /* LISTA GRACZY */
   .players-scroll { display: flex; flex-direction: column; gap: 8px; }
   .player-slot {
     background: var(--bg-inner);
@@ -254,11 +266,21 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: all 0.2s;
   }
   .player-slot.active {
     border-left-color: var(--yellow);
     background: rgba(56, 189, 248, 0.15);
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+  }
+  .player-slot.last-card-warning {
+    border-color: var(--red) !important;
+    animation: alertBlink 0.9s infinite alternate;
+  }
+
+  @keyframes alertBlink {
+    0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+    100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.9); }
   }
 
   .player-name-wrapper {
@@ -278,7 +300,36 @@
   .btn-rename:hover { color: var(--accent); }
   .btn-remove:hover { color: var(--red); }
 
+  .player-stats-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .score-pill { background: #0284c7; color: #fff; font-size: 0.8rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
+  .penalty-pill { background: #dc2626; color: #fff; font-size: 0.75rem; font-weight: 800; padding: 4px 6px; border-radius: 6px; }
+  .badge-last-card { background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+
+  /* ANIMACJA KARTY */
+  .flying-card {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+  }
+
+  /* PODSUMOWANIE RUNDY */
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.85rem;
+  }
+  .summary-table th, .summary-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  .summary-table th { color: var(--accent); }
 
   /* MODALE */
   .rules-modal, .winner-modal {
@@ -286,7 +337,7 @@
     background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center;
     z-index: 9999; padding: 16px;
   }
-  .rules-box {
+  .rules-box, .winner-box {
     background: var(--bg-card);
     border: 2px solid var(--accent);
     border-radius: 16px;
@@ -302,20 +353,20 @@
   .rules-box li { margin-bottom: 6px; }
 
   .winner-box {
-    background: var(--bg-card);
-    border: 2px solid var(--yellow); border-radius: 20px; padding: 24px 16px;
-    text-align: center; max-width: 360px; width: 100%; box-shadow: 0 0 30px var(--yellow);
+    border-color: var(--yellow);
+    text-align: center;
+    box-shadow: 0 0 30px var(--yellow);
   }
 </style>
 </head>
 <body>
 
 <div class="game-wrapper">
-  <!-- GÓRNY PASEK TURY Z PRZYCISKAMI MOTYWU I ZASAD -->
+  <!-- GÓRNY PASEK TURY ZE WSKAŹNIKIEM KTO JEDZIE -->
   <div class="top-bar-container">
     <div class="turn-banner other-turn" id="global-turn-banner">
       <div id="turn-text">OCZEKIWANIE NA START</div>
-      <div style="font-size:0.75rem; font-weight:bold; margin-top:2px;" id="turn-sub-text"></div>
+      <div style="font-size:0.78rem; font-weight:bold; margin-top:2px;" id="turn-sub-text"></div>
       <div class="timer-progress" id="timer-progress-bar"></div>
     </div>
     <button class="top-btn" onclick="toggleTheme()" id="theme-btn" title="Zmień motyw">☀️</button>
@@ -325,35 +376,58 @@
   <div class="main-grid">
     <!-- LEWY PANEL: STÓŁ I RĘKA -->
     <div class="panel">
-      <div style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">
-        Stół (Karty układane od 11 w dół do 1 oraz w górę do 20)
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Stół (11 &rarr; 1 oraz 11 &rarr; 20)</span>
+        <span style="font-size:0.8rem; font-weight:bold; color:var(--yellow);" id="match-round-indicator">Runda 1 z 3</span>
       </div>
+      
       <div id="board-lanes" style="display:flex; flex-direction:column; gap:8px;"></div>
 
+      <!-- Twoja Ręka z przełącznikiem sortowania -->
       <div style="margin-top:6px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-size:0.9rem; font-weight:bold;">Twoja Ręka (<span id="my-cards-count">0</span> kart)</span>
-          <span style="font-size:0.75rem; color:var(--accent);" id="must-play-hint"></span>
+          <div>
+            <span style="font-size:0.9rem; font-weight:bold;">Twoja Ręka (<span id="my-cards-count">0</span>)</span>
+            <span style="font-size:0.75rem; color:var(--accent); margin-left:4px;" id="must-play-hint"></span>
+          </div>
+          <button class="action-btn" style="padding:4px 10px; font-size:0.75rem; background:var(--bg-inner); color:var(--text-main); border:1px solid var(--border);" onclick="toggleSortMode()" id="btn-sort-toggle">
+            🔄 Sortuj: Kolorami
+          </button>
         </div>
         <div class="hand-scroll" id="hand-cards-container"></div>
       </div>
 
+      <!-- Przyciski Akcji -->
       <div class="controls-grid">
         <button class="action-btn btn-draw" id="btn-draw" onclick="handleDrawOrPassClick()">DOBIERZ</button>
         <button class="action-btn btn-pass" id="btn-pass" onclick="actionPass()">SPASUJ</button>
       </div>
     </div>
 
-    <!-- PRAWY PANEL: LOBBY, GRACZE & HOSTA -->
+    <!-- PRAWY PANEL: WIZUALNA TALIA, LOBBY, GRACZE & PUNKTY -->
     <div class="panel">
-      <div class="pin-badge">
-        <span id="room-pin-display">🎮 PIN: <strong style="color:var(--yellow);">Lokalnie</strong></span>
-        <span style="font-size:0.75rem; color:var(--text-muted);" id="deck-left-display">Talia: 0 kart</span>
+      <!-- Stos kart zakrytych 3D -->
+      <div class="deck-visual-box">
+        <div class="deck-3d-stack" id="deck-3d-visual"></div>
+        <div>
+          <div style="font-size:0.85rem; font-weight:bold;" id="deck-left-display">Pozostało w talii: 80 kart</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">Stos kart zakrytych do dobierania</div>
+        </div>
       </div>
 
-      <!-- Konfiguracja Hosta i liczby graczy -->
+      <!-- Konfiguracja Partii i Hosta -->
       <div class="host-config-box" id="host-config-box">
-        <div style="font-size:0.8rem; font-weight:bold; color:var(--yellow);">⚙️ Opcje stołu (2 - 6 Graczy)</div>
+        <div style="font-size:0.8rem; font-weight:bold; color:var(--yellow);">⚙️ Ustawienia Meczu</div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+          <span>Liczba partii w meczu:</span>
+          <select id="match-rounds-select" onchange="changeMatchRounds(this.value)" style="background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); padding:4px 8px; border-radius:6px;">
+            <option value="1">1 partia (Szybka gra)</option>
+            <option value="3" selected>3 partie</option>
+            <option value="5">5 partii</option>
+          </select>
+        </div>
+
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
           <span>Czas na ruch:</span>
           <select id="time-limit-select" onchange="changeTimeLimit(this.value)" style="background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); padding:4px 8px; border-radius:6px;">
@@ -364,13 +438,14 @@
             <option value="60">60 sekund</option>
           </select>
         </div>
-        <div style="display:flex; gap:6px; margin-top:4px;" id="player-count-buttons">
-          <button class="action-btn btn-draw" style="padding:6px 10px; font-size:0.75rem; flex:1;" onclick="addPlayerPrompt()">+ Dodaj Gracza</button>
+
+        <div style="display:flex; gap:6px; margin-top:2px;" id="player-count-buttons">
+          <button class="action-btn btn-draw" style="padding:6px 10px; font-size:0.75rem; flex:1;" onclick="addPlayerPrompt()">+ Dodaj Gracza (Lokalnie)</button>
         </div>
       </div>
 
       <!-- Formularz tworzenia/dołączania -->
-      <div id="lobby-setup-box" style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+      <div id="lobby-setup-box" style="display:flex; flex-direction:column; gap:6px;">
         <div style="display:flex; gap:6px;">
           <input type="text" id="user-display-name-field" style="background:var(--bg-inner); border:1px solid var(--border); color:var(--text-main); padding:8px 10px; border-radius:8px; flex:1;" placeholder="Wpisz swoje imię" autocomplete="off">
           <button class="action-btn btn-draw" style="flex:none; padding:8px 14px; font-size:0.85rem;" onclick="createRoom()">Hostuj</button>
@@ -381,11 +456,14 @@
         </div>
       </div>
 
-      <h3 style="margin: 4px 0 2px 0; font-size:0.95rem;">Gracze przy stole (<span id="players-total-count">2</span>/6)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:0.95rem;">Gracze przy stole (<span id="players-total-count">2</span>/6)</h3>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Karty / Karne pkt</span>
+      </div>
       <div class="players-scroll" id="players-list"></div>
 
       <div style="display:flex; gap:8px; margin-top:auto;" id="host-controls">
-        <button class="action-btn btn-restart" style="width:100%; padding:12px; font-size:0.85rem;" onclick="startNewGame()">🔁 Nowa Gra</button>
+        <button class="action-btn btn-restart" style="width:100%; padding:12px; font-size:0.85rem;" onclick="startNewGame(true)">🔁 Reset Meczu</button>
       </div>
     </div>
   </div>
@@ -396,26 +474,30 @@
   <div class="rules-box">
     <h2>📖 Zasady gry 11 (Elfer raus!)</h2>
     <ul>
-      <li><strong>Liczba graczy:</strong> Od 2 do 6 graczy.</li>
-      <li><strong>Cel gry:</strong> Pozbyć się jako pierwszy wszystkich kart z ręki.</li>
-      <li><strong>Karta 11 otwiera rząd:</strong> Każdy kolor na stole musi zacząć się od karty <strong>11</strong>.</li>
-      <li><strong>Dynamiczna talia:</strong> Zwiększona szansa na 11, aby gra szybko się otwierała.</li>
-      <li><strong>Rozbudowa:</strong> Dokładaj numery w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
-      <li><strong>Obowiązek ruchu:</strong> Jeśli masz pasującą kartę, musisz wyłożyć minimum jedną! Przycisk DOBIERZ jest wtedy zablokowany.</li>
-      <li><strong>Koniec talii:</strong> Gdy w talii nie ma już kart (0), a gracz nie może nic dołożyć, przycisk dobierania automatycznie zmienia się na <strong>SPASUJ</strong>.</li>
+      <li><strong>Mecz punktowy:</strong> Host ustala liczbę partii (1, 3 lub 5). Wygrywa gracz z <strong>najmniejszą sumą punktów karnych</strong> na koniec meczu!</li>
+      <li><strong>Punkty karne:</strong> Gdy ktoś skończy partię (0 pkt), pozostali gracze sumują wartości kart, które zostały im w ręku.</li>
+      <li><strong>Karta 11:</strong> Otwiera rząd w danym kolorze. Szansa na 11 jest zwiększona dla dynamiki.</li>
+      <li><strong>Rozbudowa rzędów:</strong> Dokładaj numery w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
+      <li><strong>Obowiązek ruchu:</strong> Jeśli masz pasującą kartę, musisz wyłożyć minimum jedną.</li>
+      <li><strong>Dobieranie do 3 kart:</strong> Jeśli nie masz ruchu, możesz dobrać <strong>od 1 do maksymalnie 3 kart</strong> z talii. Po każdym dobraniu możesz wyłożyć pasującą kartę lub spasować (nie musisz dobierać od razu trzech!).</li>
+      <li><strong>Pusta talia:</strong> Gdy zabraknie kart w stosie, a gracz nie ma pasującej karty, może od razu spasować.</li>
     </ul>
     <button class="action-btn btn-draw" style="width:100%;" onclick="closeRulesModal()">Rozumiem</button>
   </div>
 </div>
 
-<!-- MODAL ZWYCIĘZCY -->
+<!-- MODAL PODSUMOWANIA RUNDY / MECZU -->
 <div class="winner-modal" id="winner-modal">
   <div class="winner-box">
-    <div style="font-size: 2.8rem; margin-bottom: 4px;">🏆</div>
-    <div style="font-size: 0.9rem; font-weight: 800; color: var(--yellow); text-transform: uppercase;">Zwycięzca Gry!</div>
-    <div id="winner-name-display" style="font-size: 1.8rem; font-weight: 900; color: var(--text-main); margin: 8px 0;">GRACZ</div>
-    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Pozbył się wszystkich kart z ręki!</p>
-    <button class="action-btn btn-restart" style="width: 100%; padding: 14px;" onclick="startNewGame()">ZAGRAJ PONOWNIE</button>
+    <div style="font-size: 2.8rem; margin-bottom: 2px;" id="modal-trophy">🏆</div>
+    <div style="font-size: 0.9rem; font-weight: 800; color: var(--yellow); text-transform: uppercase;" id="modal-title-status">Koniec Rundy!</div>
+    <div id="winner-name-display" style="font-size: 1.6rem; font-weight: 900; color: var(--text-main); margin: 6px 0;">GRACZ</div>
+    
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;" id="modal-desc-status">Punkty karne z tej rundy oraz suma meczu:</p>
+    
+    <table class="summary-table" id="summary-table-body"></table>
+
+    <button class="action-btn btn-restart" style="width: 100%; padding: 13px;" id="btn-next-round-action" onclick="handleNextRoundModalClick()">NASTĘPNA RUNDA</button>
   </div>
 </div>
 
@@ -432,12 +514,21 @@ let board = {
 };
 
 let players = [
-  { id: "local_1", name: "Gracz 1", hand: [] },
-  { id: "local_2", name: "Gracz 2", hand: [] }
+  { id: "local_1", name: "Gracz 1", hand: [], penaltyPoints: 0, lastRoundPenalty: 0 },
+  { id: "local_2", name: "Gracz 2", hand: [], penaltyPoints: 0, lastRoundPenalty: 0 }
 ];
+
 let activePlayerIndex = 0;
 let cardsPlayedThisTurn = 0;
-let hasDrawnThisTurn = false;
+let drawnCardsThisTurn = 0; // Licznik dobierania od 1 do 3 kart
+
+// TRYB SORTOWANIA (colors / values)
+let handSortMode = 'colors';
+
+// STRUKTURA MECZU
+let totalMatchRounds = 3;
+let currentRound = 1;
+let isMatchOver = false;
 
 // TIMER
 let turnTimeLimit = 30;
@@ -453,13 +544,17 @@ let myClientId = "p_" + Math.random().toString(36).substring(2, 10);
 let joinInterval = null;
 
 function toggleTheme() {
-  const body = document.body;
-  body.classList.toggle("light-theme");
-  const btn = document.getElementById("theme-btn");
-  if (body.classList.contains("light-theme")) {
-    btn.innerText = "🌙";
-  } else {
-    btn.innerText = "☀️";
+  document.body.classList.toggle("light-theme");
+  document.getElementById("theme-btn").innerText = document.body.classList.contains("light-theme") ? "🌙" : "☀️";
+}
+
+function toggleSortMode() {
+  handSortMode = (handSortMode === 'colors') ? 'values' : 'colors';
+  document.getElementById("btn-sort-toggle").innerText = (handSortMode === 'colors') ? "🔄 Sortuj: Kolorami" : "🔄 Sortuj: Wartościami";
+  const myPlayer = getMyPlayer();
+  if (myPlayer) {
+    sortHand(myPlayer.hand);
+    render();
   }
 }
 
@@ -480,15 +575,22 @@ function initFullDeck() {
 }
 
 function sortHand(hand) {
-  const order = { red: 1, blue: 2, yellow: 3, green: 4 };
-  hand.sort((a, b) => {
-    if (order[a.color] !== order[b.color]) return order[a.color] - order[b.color];
-    return a.value - b.value;
-  });
+  if (handSortMode === 'colors') {
+    const order = { red: 1, blue: 2, yellow: 3, green: 4 };
+    hand.sort((a, b) => (order[a.color] !== order[b.color]) ? order[a.color] - order[b.color] : a.value - b.value);
+  } else {
+    hand.sort((a, b) => (a.value !== b.value) ? a.value - b.value : a.color.localeCompare(b.color));
+  }
 }
 
-function startNewGame() {
+function startNewGame(resetFullMatch = false) {
   document.getElementById("winner-modal").style.display = "none";
+  if (resetFullMatch) {
+    currentRound = 1;
+    isMatchOver = false;
+    players.forEach(p => { p.penaltyPoints = 0; p.lastRoundPenalty = 0; });
+  }
+
   initFullDeck();
 
   board = {
@@ -498,53 +600,53 @@ function startNewGame() {
     green: { min: null, max: null }
   };
 
-  const startingCardsCount = players.length === 2 ? 14 : (players.length <= 4 ? 11 : 9);
-
+  const startingCards = players.length === 2 ? 14 : (players.length <= 4 ? 11 : 9);
   players.forEach(p => {
     p.hand = [];
-    for (let k = 0; k < startingCardsCount; k++) {
+    for (let k = 0; k < startingCards; k++) {
       if (deck.length > 0) p.hand.push(deck.pop());
     }
     sortHand(p.hand);
   });
 
-  activePlayerIndex = 0;
+  activePlayerIndex = (currentRound - 1) % players.length;
   cardsPlayedThisTurn = 0;
-  hasDrawnThisTurn = false;
+  drawnCardsThisTurn = 0;
   
   startTurnTimer();
   broadcastState();
   render();
 }
 
-function addPlayerPrompt() {
-  if (players.length >= 6) {
-    alert("Maksymalna liczba graczy to 6!");
-    return;
+function changeMatchRounds(val) {
+  totalMatchRounds = parseInt(val, 10);
+  if (isHost) {
+    broadcastState();
+    render();
   }
-  const nextNum = players.length + 1;
-  const name = prompt("Podaj imię nowego gracza:", `Gracz ${nextNum}`);
-  if (name && name.trim() !== "") {
-    players.push({ id: `local_${Date.now()}`, name: name.trim(), hand: [] });
-    startNewGame();
+}
+
+function addPlayerPrompt() {
+  if (players.length >= 6) { alert("Maksymalnie 6 graczy!"); return; }
+  const name = prompt("Podaj imię nowego gracza:", `Gracz ${players.length + 1}`);
+  if (name && name.trim()) {
+    players.push({ id: `local_${Date.now()}`, name: name.trim(), hand: [], penaltyPoints: 0, lastRoundPenalty: 0 });
+    startNewGame(true);
   }
 }
 
 function removePlayer(idx) {
-  if (players.length <= 2) {
-    alert("Minimalna liczba graczy to 2!");
-    return;
-  }
+  if (players.length <= 2) { alert("Minimalnie 2 graczy!"); return; }
   if (confirm(`Usunąć gracza ${players[idx].name}?`)) {
     players.splice(idx, 1);
-    startNewGame();
+    startNewGame(true);
   }
 }
 
 function renamePlayer(idx) {
   const p = players[idx];
   const newName = prompt("Wpisz nowe imię:", p.name);
-  if (newName && newName.trim() !== "") {
+  if (newName && newName.trim()) {
     p.name = newName.trim();
     broadcastState();
     render();
@@ -553,9 +655,7 @@ function renamePlayer(idx) {
 
 function canPlayCard(card) {
   const lane = board[card.color];
-  if (card.value === 11) {
-    return true;
-  }
+  if (card.value === 11) return true;
   if (lane.min === null) return false;
   return card.value === lane.min - 1 || card.value === lane.max + 1;
 }
@@ -564,7 +664,40 @@ function hasAnyPlayableCard(hand) {
   return hand.some(c => canPlayCard(c));
 }
 
-function playCard(cardIdx) {
+function getMyPlayer() {
+  return mqttClient ? (players.find(p => p.id === myClientId) || players[activePlayerIndex]) : players[activePlayerIndex];
+}
+
+// ANIMACJA PRZELOTU KARTY
+function triggerFlyAnimation(cardElement, targetLaneColor, cardData, callback) {
+  const rect = cardElement.getBoundingClientRect();
+  const targetLane = document.querySelector(`.color-lane.${targetLaneColor}`);
+  const targetRect = targetLane ? targetLane.getBoundingClientRect() : { left: window.innerWidth / 2, top: 150 };
+
+  const flying = document.createElement("div");
+  flying.className = `card-chip ${cardData.color} flying-card`;
+  flying.innerText = cardData.value;
+  flying.style.left = `${rect.left}px`;
+  flying.style.top = `${rect.top}px`;
+  flying.style.width = `${rect.width}px`;
+  flying.style.height = `${rect.height}px`;
+
+  document.body.appendChild(flying);
+
+  requestAnimationFrame(() => {
+    const deltaX = (targetRect.left + targetRect.width / 2) - (rect.left + rect.width / 2);
+    const deltaY = (targetRect.top + targetRect.height / 2) - (rect.top + rect.height / 2);
+    flying.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.9)`;
+    flying.style.opacity = "0.7";
+  });
+
+  setTimeout(() => {
+    flying.remove();
+    callback();
+  }, 380);
+}
+
+function playCard(cardIdx, event) {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
@@ -572,39 +705,114 @@ function playCard(cardIdx) {
   const card = p.hand[cardIdx];
   if (!canPlayCard(card)) return;
 
-  if (isOnline && !isHost) {
-    sendAction({ type: "PLAY", cardIdx });
-    return;
-  }
-
-  p.hand.splice(cardIdx, 1);
-  cardsPlayedThisTurn++;
-
-  const lane = board[card.color];
-  if (card.value === 11) {
-    if (lane.min === null) {
-      lane.min = 11;
-      lane.max = 11;
+  const cardEl = event ? event.currentTarget : null;
+  const executePlay = () => {
+    if (isOnline && !isHost) {
+      sendAction({ type: "PLAY", cardIdx });
+      return;
     }
-  } else if (card.value < lane.min) {
-    lane.min = card.value;
-  } else if (card.value > lane.max) {
-    lane.max = card.value;
-  }
 
-  if (p.hand.length === 0) {
-    clearInterval(timerInterval);
+    p.hand.splice(cardIdx, 1);
+    cardsPlayedThisTurn++;
+
+    const lane = board[card.color];
+    if (card.value === 11) {
+      if (lane.min === null) { lane.min = 11; lane.max = 11; }
+    } else if (card.value < lane.min) {
+      lane.min = card.value;
+    } else if (card.value > lane.max) {
+      lane.max = card.value;
+    }
+
+    if (p.hand.length === 0) {
+      clearInterval(timerInterval);
+      endRound(p);
+      return;
+    }
+
     broadcastState();
     render();
-    showWinner(p.name);
-    return;
-  }
+  };
 
-  broadcastState();
-  render();
+  if (cardEl) {
+    triggerFlyAnimation(cardEl, card.color, card, executePlay);
+  } else {
+    executePlay();
+  }
 }
 
-// OBSŁUGA PRZYCISKU DOBIERZ / SPASUJ (GDY BRAK KART W TALII)
+function endRound(winnerPlayer) {
+  players.forEach(p => {
+    let roundSum = 0;
+    p.hand.forEach(c => roundSum += c.value);
+    p.lastRoundPenalty = roundSum;
+    p.penaltyPoints += roundSum;
+  });
+
+  isMatchOver = (currentRound >= totalMatchRounds);
+  broadcastState();
+  render();
+  showRoundSummary(winnerPlayer);
+}
+
+function showRoundSummary(winner) {
+  const modal = document.getElementById("winner-modal");
+  const trophy = document.getElementById("modal-trophy");
+  const titleStatus = document.getElementById("modal-title-status");
+  const nameDisplay = document.getElementById("winner-name-display");
+  const descStatus = document.getElementById("modal-desc-status");
+  const btnNext = document.getElementById("btn-next-round-action");
+  const table = document.getElementById("summary-table-body");
+
+  const sortedPlayers = [...players].sort((a, b) => a.penaltyPoints - b.penaltyPoints);
+
+  if (isMatchOver) {
+    trophy.innerText = "👑";
+    titleStatus.innerText = "KONIEC MECZU! ZWYCIĘZCA CAŁEJ GRY:";
+    nameDisplay.innerText = `${sortedPlayers[0].name.toUpperCase()} (${sortedPlayers[0].penaltyPoints} pkt karnych)`;
+    descStatus.innerText = "Mecz dobiegł końca. Ostateczna tabela wyników:";
+    btnNext.innerText = "ZAGRAJ NOWY MECZ";
+  } else {
+    trophy.innerText = "🏆";
+    titleStatus.innerText = `Koniec Partii ${currentRound} z ${totalMatchRounds}!`;
+    nameDisplay.innerText = `${winner.name.toUpperCase()} (0 pkt karnych)`;
+    descStatus.innerText = "Punkty karne za karty w ręce oraz łączna suma meczu:";
+    btnNext.innerText = `ROZPOCZNIJ PARTIĘ ${currentRound + 1}`;
+  }
+
+  let html = `
+    <tr>
+      <th>Miejsce</th>
+      <th>Gracz</th>
+      <th>Ta partia</th>
+      <th>Suma punktów</th>
+    </tr>
+  `;
+  sortedPlayers.forEach((p, idx) => {
+    html += `
+      <tr>
+        <td><strong>#${idx + 1}</strong></td>
+        <td>${p.name}</td>
+        <td>+${p.lastRoundPenalty}</td>
+        <td><strong>${p.penaltyPoints}</strong></td>
+      </tr>
+    `;
+  });
+  table.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function handleNextRoundModalClick() {
+  document.getElementById("winner-modal").style.display = "none";
+  if (isMatchOver) {
+    startNewGame(true);
+  } else {
+    currentRound++;
+    startNewGame(false);
+  }
+}
+
+// DOBIERANIE OD 1 DO 3 KART
 function handleDrawOrPassClick() {
   const p = players[activePlayerIndex];
   const isOnline = !!mqttClient;
@@ -613,7 +821,6 @@ function handleDrawOrPassClick() {
   const currentDeckCount = isOnline ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
   const hasPlayable = hasAnyPlayableCard(p.hand);
 
-  // Jeśli talia jest pusta i gracz nie ma pasujących kart -> akcja działa jako spasowanie
   if (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable) {
     actionPass();
   } else {
@@ -626,8 +833,9 @@ function actionDraw() {
   const isOnline = !!mqttClient;
   if (isOnline && p.id !== myClientId) return;
   
-  if (hasAnyPlayableCard(p.hand) && cardsPlayedThisTurn === 0) return;
-  if (hasDrawnThisTurn) return;
+  // Blokada dobierania jeśli gracz ma ruch na stole i jeszcze nic nie wyłożył (i nie zaczął dobierać)
+  if (hasAnyPlayableCard(p.hand) && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) return;
+  if (drawnCardsThisTurn >= 3) return;
 
   if (isOnline && !isHost) {
     sendAction({ type: "DRAW" });
@@ -637,7 +845,7 @@ function actionDraw() {
   if (deck.length > 0) {
     p.hand.push(deck.pop());
     sortHand(p.hand);
-    hasDrawnThisTurn = true;
+    drawnCardsThisTurn++;
   }
 
   broadcastState();
@@ -652,8 +860,8 @@ function actionPass() {
   const currentDeckCount = isOnline ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
   const hasPlayable = hasAnyPlayableCard(p.hand);
 
-  // Pasowanie jest dozwolone gdy: wyłożono kartę, dobrano z talii, LUB gdy talia jest pusta i brak ruchu
-  const canLegallyPass = (cardsPlayedThisTurn > 0) || hasDrawnThisTurn || (currentDeckCount === 0 && !hasPlayable);
+  // Pasowanie dozwolone gdy: gracz dołożył kartę, dobrał przynajmniej jedną (1-3), LUB gdy talia jest pusta i brak ruchu
+  const canLegallyPass = (cardsPlayedThisTurn > 0) || (drawnCardsThisTurn > 0) || (currentDeckCount === 0 && !hasPlayable);
   if (!canLegallyPass) return;
 
   if (isOnline && !isHost) {
@@ -667,7 +875,7 @@ function actionPass() {
 function nextTurn() {
   activePlayerIndex = (activePlayerIndex + 1) % players.length;
   cardsPlayedThisTurn = 0;
-  hasDrawnThisTurn = false;
+  drawnCardsThisTurn = 0;
   startTurnTimer();
   broadcastState();
   render();
@@ -675,10 +883,7 @@ function nextTurn() {
 
 function startTurnTimer() {
   clearInterval(timerInterval);
-  if (turnTimeLimit <= 0) {
-    timeLeft = 0;
-    return;
-  }
+  if (turnTimeLimit <= 0) { timeLeft = 0; return; }
 
   timeLeft = turnTimeLimit;
   timerInterval = setInterval(() => {
@@ -687,7 +892,7 @@ function startTurnTimer() {
       clearInterval(timerInterval);
       if (isHost) {
         const p = players[activePlayerIndex];
-        if (cardsPlayedThisTurn === 0 && !hasDrawnThisTurn && deck.length > 0) {
+        if (cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0 && deck.length > 0) {
           p.hand.push(deck.pop());
           sortHand(p.hand);
         }
@@ -700,25 +905,12 @@ function startTurnTimer() {
 
 function updateTimerDisplay() {
   const bar = document.getElementById("timer-progress-bar");
-  if (turnTimeLimit > 0) {
-    const pct = (timeLeft / turnTimeLimit) * 100;
-    bar.style.width = `${pct}%`;
-  } else {
-    bar.style.width = "0%";
-  }
+  bar.style.width = (turnTimeLimit > 0) ? `${(timeLeft / turnTimeLimit) * 100}%` : "0%";
 }
 
 function changeTimeLimit(val) {
   turnTimeLimit = parseInt(val, 10);
-  if (isHost) {
-    startTurnTimer();
-    broadcastState();
-  }
-}
-
-function showWinner(name) {
-  document.getElementById("winner-name-display").innerText = name.toUpperCase();
-  document.getElementById("winner-modal").style.display = "flex";
+  if (isHost) { startTurnTimer(); broadcastState(); }
 }
 
 function openRulesModal() { document.getElementById("rules-modal").style.display = "flex"; }
@@ -733,9 +925,12 @@ function broadcastState() {
     deckCount: deck.length,
     activePlayerIndex,
     cardsPlayedThisTurn,
-    hasDrawnThisTurn,
+    drawnCardsThisTurn,
     turnTimeLimit,
-    timeLeft
+    timeLeft,
+    currentRound,
+    totalMatchRounds,
+    isMatchOver
   };
   mqttClient.publish(currentRoomTopic + "/state", JSON.stringify(payload));
 }
@@ -758,19 +953,19 @@ function createRoom() {
   if (!myName) { alert("Wpisz swoje imię!"); return; }
 
   const pin = Math.floor(1000 + Math.random() * 9000).toString();
-  currentRoomTopic = `gra11_dyn_${pin}`;
+  currentRoomTopic = `gra11_v18_${pin}`;
 
   mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
   mqttClient.on('connect', () => {
     isHost = true;
-    players = [{ id: myClientId, name: myName, hand: [] }];
+    players = [{ id: myClientId, name: myName, hand: [], penaltyPoints: 0, lastRoundPenalty: 0 }];
     mqttClient.subscribe(currentRoomTopic + "/actions");
     mqttClient.subscribe(currentRoomTopic + "/join");
 
     document.getElementById("room-pin-display").innerHTML = `🎮 PIN: <strong style="color:var(--yellow); font-size:1.15rem;">${pin}</strong>`;
     document.getElementById("lobby-setup-box").style.display = "none";
     document.getElementById("player-count-buttons").style.display = "none";
-    startNewGame();
+    startNewGame(true);
   });
 
   mqttClient.on('message', (topic, message) => {
@@ -778,8 +973,8 @@ function createRoom() {
       const data = JSON.parse(message.toString());
       if (topic.endsWith("/join")) {
         if (!players.some(p => p.id === data.id) && players.length < 6) {
-          players.push({ id: data.id, name: data.name, hand: [] });
-          startNewGame();
+          players.push({ id: data.id, name: data.name, hand: [], penaltyPoints: 0, lastRoundPenalty: 0 });
+          startNewGame(true);
         }
       } else if (topic.endsWith("/actions")) {
         handleIncomingAction(data.action);
@@ -794,13 +989,12 @@ function joinRoom() {
   const pin = document.getElementById("room-pin-input").value.trim();
   if (!myName || !pin) { alert("Wpisz imię i PIN!"); return; }
 
-  currentRoomTopic = `gra11_dyn_${pin}`;
+  currentRoomTopic = `gra11_v18_${pin}`;
   mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
 
   mqttClient.on('connect', () => {
     isHost = false;
     mqttClient.subscribe(currentRoomTopic + "/state");
-    
     joinInterval = setInterval(() => {
       mqttClient.publish(currentRoomTopic + "/join", JSON.stringify({ id: myClientId, name: myName }));
     }, 400);
@@ -820,10 +1014,13 @@ function joinRoom() {
         players = data.players;
         activePlayerIndex = data.activePlayerIndex;
         cardsPlayedThisTurn = data.cardsPlayedThisTurn;
-        hasDrawnThisTurn = data.hasDrawnThisTurn;
+        drawnCardsThisTurn = data.drawnCardsThisTurn;
         turnTimeLimit = data.turnTimeLimit;
         timeLeft = data.timeLeft;
-        document.getElementById("deck-left-display").innerText = `Talia: ${data.deckCount} kart`;
+        currentRound = data.currentRound;
+        totalMatchRounds = data.totalMatchRounds;
+        isMatchOver = data.isMatchOver;
+        document.getElementById("deck-left-display").innerText = `Pozostało w talii: ${data.deckCount} kart`;
         updateTimerDisplay();
         render();
       }
@@ -836,7 +1033,7 @@ function render() {
   const currPlayer = players[activePlayerIndex];
   const isMyTurn = !isOnline ? true : (currPlayer && currPlayer.id === myClientId);
 
-  const myPlayer = isOnline ? (players.find(p => p.id === myClientId) || currPlayer) : currPlayer;
+  const myPlayer = getMyPlayer();
   const myPlayableCards = myPlayer && myPlayer.hand ? myPlayer.hand.filter(c => canPlayCard(c)) : [];
   const hasPlayable = myPlayableCards.length > 0;
   
@@ -845,35 +1042,47 @@ function render() {
     : deck.length;
 
   if (!isOnline) {
-    document.getElementById("deck-left-display").innerText = `Talia: ${currentDeckCount} kart`;
+    document.getElementById("deck-left-display").innerText = `Pozostało w talii: ${currentDeckCount} kart`;
   }
 
-  // Baner
+  // Wskaźnik stosu 3D
+  const stackVisual = document.getElementById("deck-3d-visual");
+  if (currentDeckCount === 0) {
+    stackVisual.style.opacity = "0.2";
+    stackVisual.style.boxShadow = "none";
+  } else {
+    stackVisual.style.opacity = "1";
+    stackVisual.style.boxShadow = `2px 2px 0px #1e293b, 4px 4px 0px #0284c7`;
+  }
+
+  // Runda meczu
+  document.getElementById("match-round-indicator").innerText = `Partia ${currentRound} z ${totalMatchRounds}`;
+
+  // Baner Tury
   const turnBanner = document.getElementById("global-turn-banner");
   const turnText = document.getElementById("turn-text");
   const turnSub = document.getElementById("turn-sub-text");
 
   if (isMyTurn) {
     turnBanner.className = "turn-banner my-turn";
-    turnText.innerHTML = "👉 TWOJA TURA!";
-    if (cardsPlayedThisTurn === 0 && hasPlayable) {
+    turnText.innerHTML = "👉 TWOJA TURA (JEDZIESZ TERAZ!)";
+    if (cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0 && hasPlayable) {
       turnSub.innerText = "Musisz wyłożyć przynajmniej jedną kartę!";
     } else if (cardsPlayedThisTurn > 0) {
-      turnSub.innerText = `Wyłożono kart: ${cardsPlayedThisTurn}. Dokładaj dalej lub spasuj.`;
-    } else if (hasDrawnThisTurn) {
-      turnSub.innerText = "Dobrano kartę. Wyłóż ją lub spasuj.";
+      turnSub.innerText = `Wyłożono: ${cardsPlayedThisTurn} kart. Dokładaj dalej lub spasuj.`;
+    } else if (drawnCardsThisTurn > 0) {
+      turnSub.innerText = `Dobrana karta (${drawnCardsThisTurn}/3). Wyłóż pasującą, dobierz kolejną lub spasuj.`;
     } else if (currentDeckCount === 0 && !hasPlayable) {
-      turnSub.innerText = "Talia jest pusta i brak pasujących kart. Spasuj ruch.";
+      turnSub.innerText = "Talia jest pusta i brak ruchu. Spasuj ruch.";
     } else {
-      turnSub.innerText = "Brak pasujących kart. Dobierz z talii.";
+      turnSub.innerText = "Brak pasujących kart. Dobierz kartę (do 3 sztuk).";
     }
   } else {
     turnBanner.className = "turn-banner other-turn";
-    turnText.innerHTML = `⏳ TURA GRACZA: <strong>${currPlayer ? currPlayer.name.toUpperCase() : ''}</strong>`;
-    turnSub.innerText = "";
+    turnText.innerHTML = `⏳ JEDZIE: <strong>${currPlayer ? currPlayer.name.toUpperCase() : ''}</strong>`;
+    turnSub.innerText = `Czekaj na swój ruch...`;
   }
 
-  // Licznik graczy
   document.getElementById("players-total-count").innerText = players.length;
 
   // Lista graczy
@@ -882,28 +1091,38 @@ function render() {
   players.forEach((p, idx) => {
     const isAct = idx === activePlayerIndex;
     const isMe = p.id === myClientId;
+    const isLastCard = (p.hand.length === 1);
+
     pList.innerHTML += `
-      <div class="player-slot ${isAct ? 'active' : ''}">
+      <div class="player-slot ${isAct ? 'active' : ''} ${isLastCard ? 'last-card-warning' : ''}">
         <div class="player-name-wrapper">
-          <span style="${isMe ? 'color:var(--accent); font-weight:900;' : 'font-weight:bold;'}">${p.name} ${isAct ? '▶' : ''}</span>
+          <span style="${isMe ? 'color:var(--accent); font-weight:900;' : 'font-weight:bold;'}">
+            ${p.name} ${isAct ? '<strong style="color:var(--yellow); font-size:0.75rem;">(JEDZIE)</strong>' : ''}
+          </span>
           <button class="btn-rename" onclick="renamePlayer(${idx})" title="Zmień imię">✏️</button>
           ${!isOnline && players.length > 2 ? `<button class="btn-remove" onclick="removePlayer(${idx})" title="Usuń gracza">❌</button>` : ''}
         </div>
-        <span class="score-pill">${p.hand.length} kart</span>
+        <div class="player-stats-badge">
+          ${isLastCard ? '<span class="badge-last-card">⚠️ 1 KARTA!</span>' : ''}
+          <span class="score-pill">${p.hand.length} kart</span>
+          <span class="penalty-pill" title="Łączne punkty karne w meczu">${p.penaltyPoints} pkt</span>
+        </div>
       </div>
     `;
   });
 
-  // Stół
+  // Stół (Rzędy)
   const lanesBox = document.getElementById("board-lanes");
   lanesBox.innerHTML = "";
   COLORS.forEach(color => {
     const lane = board[color];
     let cardsHtml = "";
+    let completedCount = 0;
 
     if (lane.min === null) {
       cardsHtml = `<div class="card-chip empty-slot">11</div>`;
     } else {
+      completedCount = (lane.max - lane.min + 1);
       for (let v = lane.min; v <= lane.max; v++) {
         cardsHtml += `<div class="card-chip ${color}">${v}</div>`;
       }
@@ -911,7 +1130,10 @@ function render() {
 
     lanesBox.innerHTML += `
       <div class="color-lane ${color}">
-        <div class="color-title">${COLOR_NAMES[color]}</div>
+        <div class="color-title-box">
+          <span class="color-title">${COLOR_NAMES[color]}</span>
+          <span class="lane-progress">${completedCount}/20</span>
+        </div>
         ${cardsHtml}
       </div>
     `;
@@ -923,7 +1145,7 @@ function render() {
 
   if (myPlayer && myPlayer.hand) {
     document.getElementById("my-cards-count").innerText = myPlayer.hand.length;
-    document.getElementById("must-play-hint").innerText = (isMyTurn && hasPlayable && cardsPlayedThisTurn === 0) 
+    document.getElementById("must-play-hint").innerText = (isMyTurn && hasPlayable && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) 
       ? "⚠️ Obowiązkowy ruch!" : "";
 
     myPlayer.hand.forEach((c, idx) => {
@@ -932,13 +1154,13 @@ function render() {
       div.className = `card-chip ${c.color} hand-card ${playable ? 'playable' : ''}`;
       div.innerText = c.value;
       if (playable) {
-        div.onclick = () => playCard(idx);
+        div.onclick = (e) => playCard(idx, e);
       }
       hContainer.appendChild(div);
     });
   }
 
-  // LOGIKA PRZYCISKÓW (ZMIANA DOBIERZ -> SPASUJ PRZY PUSTEJ TALII)
+  // LOGIKA PRZYCISKÓW (DOBIERANIE 1-3 KART ORAZ SPASUJ)
   const btnDraw = document.getElementById("btn-draw");
   const isDeckEmptyNoPlay = (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable);
 
@@ -946,16 +1168,24 @@ function render() {
     btnDraw.innerText = "SPASUJ (BRAK KART)";
     btnDraw.disabled = !isMyTurn;
   } else {
-    btnDraw.innerText = "DOBIERZ";
-    const canDraw = isMyTurn && !hasDrawnThisTurn && (cardsPlayedThisTurn === 0 && !hasPlayable) && currentDeckCount > 0;
+    // Pokazuj status dobierania (np. DOBIERZ (1/3), DOBIERZ (2/3))
+    if (drawnCardsThisTurn === 0) {
+      btnDraw.innerText = "DOBIERZ (DO 3)";
+    } else {
+      btnDraw.innerText = `DOBIERZ (${drawnCardsThisTurn}/3)`;
+    }
+    
+    // Dobieranie dozwolone tylko jeśli gracz nie ma ruchu (na początku) LUB dobrał już 1 albo 2 karty i dalej nie osiągnął limitu 3
+    const canDraw = isMyTurn && (drawnCardsThisTurn < 3) && (cardsPlayedThisTurn === 0 && (drawnCardsThisTurn > 0 || !hasPlayable)) && currentDeckCount > 0;
     btnDraw.disabled = !canDraw;
   }
 
-  const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || hasDrawnThisTurn || isDeckEmptyNoPlay);
+  // Gracz może spasować jeśli wyłożył kartę, jeśli dobrał przynajmniej 1 kartę (nie musi dobierać 3!), lub gdy talia jest pusta
+  const canPass = isMyTurn && (cardsPlayedThisTurn > 0 || drawnCardsThisTurn > 0 || isDeckEmptyNoPlay);
   document.getElementById("btn-pass").disabled = !canPass;
 }
 
-startNewGame();
+startNewGame(true);
 </script>
 </body>
 </html>
