@@ -534,7 +534,7 @@
   <div class="rules-box">
     <h2>📖 Zasady gry 11 (Elfer raus!)</h2>
     <ul>
-      <li><strong>Mecz punktowy:</strong> Host wybiera liczbę partii (1, 3 lub 5) oraz czas na ruch przed rozpoczęciem hostowania. W trakcie gry opcje te są zablokowane.</li>
+      <li><strong>Mecz punktowy:</strong> Host wybiera liczbę partii: 1, 3 lub 5 oraz czas na ruch przed rozpoczęciem hostowania. W trakcie gry opcje te są zablokowane.</li>
       <li><strong>Zliczanie punktów karnych:</strong> Zwycięzca partii ma 0 pkt. Pozostali gracze sumują wartości kart pozostałych w ręku. Wygrywa ten, kto po wszystkich partiach ma najmniej punktów.</li>
       <li><strong>Karta 11:</strong> Otwiera rząd na stole.</li>
       <li><strong>Rozbudowa rzędów:</strong> Dokładaj numery w dół (10 &rarr; 1) lub w górę (12 &rarr; 20).</li>
@@ -571,6 +571,20 @@ let board = {
   green: { min: null, max: null }
 };
 
+// Generowanie trwałego unikalnego ID urządzenia
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '').substring(0, 12);
+  }
+  return 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+}
+
+let myClientId = localStorage.getItem("elfer_client_id");
+if (!myClientId) {
+  myClientId = generateUUID();
+  localStorage.setItem("elfer_client_id", myClientId);
+}
+
 let players = [
   { id: "local_1", name: "Gracz 1", hand: [], penaltyPoints: 0, lastRoundPenalty: 0 },
   { id: "local_2", name: "Gracz 2", hand: [], penaltyPoints: 0, lastRoundPenalty: 0 }
@@ -597,7 +611,6 @@ let mqttClient = null;
 let currentRoomTopic = null;
 let isHost = true;
 let isOnlineGame = false;
-let myClientId = "p_" + Math.random().toString(36).substring(2, 10);
 let joinInterval = null;
 
 function toggleTheme() {
@@ -676,8 +689,10 @@ function startNewGame(resetFullMatch = false) {
 function lockGameSettings() {
   isGameStarted = true;
   const configBox = document.getElementById("host-match-rounds-box");
-  configBox.classList.add("locked");
-  document.getElementById("config-status-label").innerText = "🔒 Ustawienia meczu (Zablokowane):";
+  if (configBox) {
+    configBox.classList.add("locked");
+    document.getElementById("config-status-label").innerText = "🔒 Ustawienia meczu (Zablokowane):";
+  }
 }
 
 function setMatchRounds(rounds) {
@@ -779,11 +794,12 @@ function triggerFlyAnimation(cardElement, targetLaneColor, cardData, callback) {
 }
 
 function playCard(cardIdx, event) {
-  const currPlayer = players[activePlayerIndex];
-  if (isOnlineGame && currPlayer.id !== myClientId) return;
-
   const myP = getMyPlayer();
   if (!myP || !myP.hand || !myP.hand[cardIdx]) return;
+
+  const currPlayer = players[activePlayerIndex];
+  if (!currPlayer || currPlayer.id !== myP.id) return; // Ruch tylko w swojej turze
+
   const card = myP.hand[cardIdx];
   if (!canPlayCard(card)) return;
 
@@ -805,7 +821,7 @@ function playCard(cardIdx, event) {
 
 function applyPlayCardToPlayer(senderId, cardObj) {
   const currPlayer = players[activePlayerIndex];
-  if (currPlayer.id !== senderId) return;
+  if (!currPlayer || currPlayer.id !== senderId) return;
 
   const handIdx = currPlayer.hand.findIndex(c => c.color === cardObj.color && c.value === cardObj.value);
   if (handIdx === -1) return;
@@ -907,11 +923,14 @@ function handleNextRoundModalClick() {
 }
 
 function handleDrawOrPassClick() {
+  const myP = getMyPlayer();
+  if (!myP) return;
+
   const currPlayer = players[activePlayerIndex];
-  if (isOnlineGame && currPlayer.id !== myClientId) return;
+  if (!currPlayer || currPlayer.id !== myP.id) return;
 
   const currentDeckCount = isOnlineGame ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
-  const hasPlayable = hasAnyPlayableCard(currPlayer.hand);
+  const hasPlayable = hasAnyPlayableCard(myP.hand);
 
   if (currentDeckCount === 0 && cardsPlayedThisTurn === 0 && !hasPlayable) {
     actionPass();
@@ -921,10 +940,13 @@ function handleDrawOrPassClick() {
 }
 
 function actionDraw() {
+  const myP = getMyPlayer();
+  if (!myP) return;
+
   const currPlayer = players[activePlayerIndex];
-  if (isOnlineGame && currPlayer.id !== myClientId) return;
+  if (!currPlayer || currPlayer.id !== myP.id) return;
   
-  if (hasAnyPlayableCard(currPlayer.hand) && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) return;
+  if (hasAnyPlayableCard(myP.hand) && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) return;
   if (drawnCardsThisTurn >= 3) return;
 
   if (isOnlineGame && !isHost) {
@@ -937,7 +959,7 @@ function actionDraw() {
 
 function applyDrawToPlayer(senderId) {
   const currPlayer = players[activePlayerIndex];
-  if (currPlayer.id !== senderId) return;
+  if (!currPlayer || currPlayer.id !== senderId) return;
   if (drawnCardsThisTurn >= 3) return;
 
   if (deck.length > 0) {
@@ -950,11 +972,14 @@ function applyDrawToPlayer(senderId) {
 }
 
 function actionPass() {
+  const myP = getMyPlayer();
+  if (!myP) return;
+
   const currPlayer = players[activePlayerIndex];
-  if (isOnlineGame && currPlayer.id !== myClientId) return;
+  if (!currPlayer || currPlayer.id !== myP.id) return;
 
   const currentDeckCount = isOnlineGame ? parseInt(document.getElementById("deck-left-display").innerText.replace(/\D/g, "") || "0", 10) : deck.length;
-  const hasPlayable = hasAnyPlayableCard(currPlayer.hand);
+  const hasPlayable = hasAnyPlayableCard(myP.hand);
 
   const canLegallyPass = (cardsPlayedThisTurn > 0) || (drawnCardsThisTurn > 0) || (currentDeckCount === 0 && !hasPlayable);
   if (!canLegallyPass) return;
@@ -1029,7 +1054,6 @@ function broadcastState() {
   mqttClient.publish(currentRoomTopic + "/state", JSON.stringify(payload));
 }
 
-// SPŁASZCZONA STRUKTURA PAKIETU AKCJI (GWARANTUJE REJESTRACJĘ RUCHU PRZEZ HOSTA)
 function sendAction(actionData) {
   if (mqttClient && currentRoomTopic) {
     const payload = Object.assign({ senderId: myClientId }, actionData);
@@ -1048,7 +1072,7 @@ function handleIncomingAction(data) {
     applyDrawToPlayer(senderId);
   } else if (data.type === "PASS") {
     const currPlayer = players[activePlayerIndex];
-    if (currPlayer.id === senderId) {
+    if (currPlayer && currPlayer.id === senderId) {
       nextTurn();
     }
   }
@@ -1062,11 +1086,15 @@ function createRoom() {
   const pin = Math.floor(1000 + Math.random() * 9000).toString();
   currentRoomTopic = `gra11_match_${pin}`;
 
-  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
+  // Każde połączenie ma całkowicie unikalny MQTT client ID
+  const mqttId = "mqtt_" + generateUUID();
+  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: mqttId, clean: true });
+
   mqttClient.on('connect', () => {
     isHost = true;
     isOnlineGame = true;
     players = [{ id: myClientId, name: myName, hand: [], penaltyPoints: 0, lastRoundPenalty: 0 }];
+    
     mqttClient.subscribe(currentRoomTopic + "/actions");
     mqttClient.subscribe(currentRoomTopic + "/join");
 
@@ -1084,11 +1112,24 @@ function createRoom() {
       if (topic.endsWith("/join")) {
         let existingPlayer = players.find(p => p.id === data.id);
         if (!existingPlayer && players.length < 6) {
-          players.push({ id: data.id, name: data.name, hand: [], penaltyPoints: 0, lastRoundPenalty: 0 });
-          startNewGame(true);
-        } else {
-          broadcastState();
+          // Rozdaj karty dołączającemu z obecnej talii zamiast resetować stół
+          const startingCards = (players.length + 1 === 2) ? 14 : 11;
+          const newHand = [];
+          for (let k = 0; k < startingCards; k++) {
+            if (deck.length > 0) newHand.push(deck.pop());
+          }
+          sortHand(newHand);
+
+          players.push({
+            id: data.id,
+            name: data.name,
+            hand: newHand,
+            penaltyPoints: 0,
+            lastRoundPenalty: 0
+          });
         }
+        broadcastState();
+        render();
       } else if (topic.endsWith("/actions")) {
         handleIncomingAction(data);
       }
@@ -1103,15 +1144,23 @@ function joinRoom() {
   if (!myName || !pin) { alert("Wpisz imię i PIN!"); return; }
 
   currentRoomTopic = `gra11_match_${pin}`;
-  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: myClientId, clean: true });
+  const mqttId = "mqtt_" + generateUUID();
+  mqttClient = mqtt.connect(MQTT_BROKER, { clientId: mqttId, clean: true });
 
   mqttClient.on('connect', () => {
     isHost = false;
     isOnlineGame = true;
     mqttClient.subscribe(currentRoomTopic + "/state");
     
+    // Wysyłaj żądanie dołączenia dopóki Host nie przyśle stanu z naszym ID
     joinInterval = setInterval(() => {
-      mqttClient.publish(currentRoomTopic + "/join", JSON.stringify({ id: myClientId, name: myName }));
+      const alreadyInList = players.some(p => p.id === myClientId);
+      if (alreadyInList) {
+        clearInterval(joinInterval);
+        joinInterval = null;
+      } else {
+        mqttClient.publish(currentRoomTopic + "/join", JSON.stringify({ id: myClientId, name: myName }));
+      }
     }, 400);
 
     document.getElementById("room-pin-display").innerHTML = `✅ PIN: <strong style="color:var(--success); font-size:1.15rem;">${pin}</strong>`;
@@ -1125,7 +1174,6 @@ function joinRoom() {
   mqttClient.on('message', (topic, message) => {
     try {
       if (topic.endsWith("/state")) {
-        if (joinInterval) { clearInterval(joinInterval); joinInterval = null; }
         const data = JSON.parse(message.toString());
         board = data.board;
         players = data.players;
@@ -1137,6 +1185,12 @@ function joinRoom() {
         isMatchOver = data.isMatchOver;
         turnTimeLimit = data.turnTimeLimit;
         timeLeft = data.timeLeft;
+
+        // Jeśli Host nas zarejestrował, wyłącz interval
+        if (joinInterval && players.some(p => p.id === myClientId)) {
+          clearInterval(joinInterval);
+          joinInterval = null;
+        }
         
         document.getElementById("deck-left-display").innerText = `Pozostało w talii: ${data.deckCount} kart`;
         document.getElementById("current-rules-pill").innerText = `Mecz do ${totalMatchRounds} partii`;
@@ -1161,9 +1215,9 @@ function joinRoom() {
 
 function render() {
   const currPlayer = players[activePlayerIndex];
-  const isMyTurn = !isOnlineGame ? true : (currPlayer && currPlayer.id === myClientId);
-
   const myPlayer = getMyPlayer();
+  const isMyTurn = !isOnlineGame ? true : (currPlayer && myPlayer && currPlayer.id === myPlayer.id);
+
   const myPlayableCards = myPlayer && myPlayer.hand ? myPlayer.hand.filter(c => canPlayCard(c)) : [];
   const hasPlayable = myPlayableCards.length > 0;
   
@@ -1214,21 +1268,21 @@ function render() {
   pList.innerHTML = "";
   players.forEach((p, idx) => {
     const isAct = idx === activePlayerIndex;
-    const isMe = p.id === myClientId;
-    const isLastCard = (p.hand.length === 1);
+    const isMe = (p.id === myClientId);
+    const isLastCard = (p.hand && p.hand.length === 1);
 
     pList.innerHTML += `
       <div class="player-slot ${isAct ? 'active' : ''} ${isLastCard ? 'last-card-warning' : ''}">
         <div class="player-name-wrapper">
           <span style="${isMe ? 'color:var(--accent); font-weight:900;' : 'font-weight:bold;'}">
-            ${p.name} ${isAct ? '<strong style="color:var(--yellow); font-size:0.75rem;">(JEDZIE)</strong>' : ''}
+            ${p.name} ${isMe ? '(Ty)' : ''} ${isAct ? '<strong style="color:var(--yellow); font-size:0.75rem;">(JEDZIE)</strong>' : ''}
           </span>
           <button class="btn-rename" onclick="renamePlayer(${idx})" title="Zmień imię">✏️</button>
           ${!isOnlineGame && players.length > 2 ? `<button class="btn-remove" onclick="removePlayer(${idx})" title="Usuń gracza">❌</button>` : ''}
         </div>
         <div class="player-stats-badge">
           ${isLastCard ? '<span class="badge-last-card">⚠️ 1 KARTA!</span>' : ''}
-          <span class="score-pill" title="Liczba kart w ręce">${p.hand.length} k.</span>
+          <span class="score-pill" title="Liczba kart w ręce">${p.hand ? p.hand.length : 0} k.</span>
           <span class="penalty-pill" title="Łączne punkty karne w meczu">PKT: ${p.penaltyPoints}</span>
         </div>
       </div>
@@ -1242,7 +1296,7 @@ function render() {
     let cardsHtml = "";
     let completedCount = 0;
 
-    if (lane.min === null) {
+    if (!lane || lane.min === null) {
       cardsHtml = `<div class="card-chip empty-slot">11</div>`;
     } else {
       completedCount = (lane.max - lane.min + 1);
@@ -1265,7 +1319,7 @@ function render() {
   const hContainer = document.getElementById("hand-cards-container");
   hContainer.innerHTML = "";
 
-  if (myPlayer && myPlayer.hand) {
+  if (myPlayer && myPlayer.hand && Array.isArray(myPlayer.hand)) {
     document.getElementById("my-cards-count").innerText = myPlayer.hand.length;
     document.getElementById("must-play-hint").innerText = (isMyTurn && hasPlayable && cardsPlayedThisTurn === 0 && drawnCardsThisTurn === 0) 
       ? "⚠️ Obowiązkowy ruch!" : "";
@@ -1282,6 +1336,7 @@ function render() {
     });
   } else {
     document.getElementById("my-cards-count").innerText = "0";
+    hContainer.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); padding:10px;">Oczekiwanie na przydział kart przez Hosta...</div>`;
   }
 
   const btnDraw = document.getElementById("btn-draw");
